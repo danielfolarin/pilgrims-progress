@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Unburdened Road</title>
+  </head>
+  <body>
+    <canvas id="c" tabindex="0" aria-label="Game view"></canvas>
+    <div id="ui">
+      <div id="vignette"></div>
+      <div id="mud"></div>
+      <div id="objective" role="status"></div>
+      <div id="hint"></div>
+      <div id="toast" role="status"></div>
+      <div id="prompt"></div>
+      <div id="subs" aria-live="polite"></div>
+      <div id="dlg">
+        <div id="dlg-name"></div>
+        <div id="dlg-text"></div>
+        <div id="dlg-choices"></div>
+        <div id="dlg-next">E / Enter ▸</div>
+      </div>
+      <div id="card"><div id="card-title"></div><div id="card-sub"></div></div>
+      <div id="paper"><div id="paper-inner"><h2 id="paper-title"></h2><div id="paper-body"></div><div id="paper-close">E / Enter — put it away</div></div></div>
+      <div id="fade"></div>
+      <div id="menu"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

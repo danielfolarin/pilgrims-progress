@@ -3,6 +3,7 @@ import type { Game } from './game';
 import { Character, OLD_ROBE } from './characters';
 import { angDiff, clamp, damp } from '../core/util';
 import { groundY, height, mireAt, onPlank, WORLD_END_Z, PLANK_LEN } from '../world/terrain';
+import { N } from '../content/lines';
 
 export type Collider =
   | { k: 'c'; x: number; z: number; r: number; on?: () => boolean; tall?: boolean }
@@ -82,7 +83,7 @@ export class Player {
       else wantRun = inp.held('run');
       if (inp.pressed('jump')) {
         if (free && this.grounded) { this.vy = 5.8; this.grounded = false; this.leaps++; g.audio.footstep('grass', false); }
-        else if (!free) this.tell('jump', 'thought', 'With this on your back, your feet will not leave the ground.');
+        else if (!free && !this.told.jump) { this.told.jump = true; g.note(N.noJump); }
       }
     }
     const moving = Math.hypot(dx, dz) > 0.05;
@@ -150,12 +151,6 @@ export class Player {
     const lean = free ? (sp > 5 ? 0.14 : 0) : 0.42 + (1 - this.weightMul) * 0.7 + (this.winded > 0 ? 0.12 : 0);
     this.ch.update(dt, sp, lean, free ? 0 : 0.34);
     this.ch.setCarry(this.carrying >= 0 ? PLANK_LEN[this.carrying] : 0);
-  }
-
-  private tell(key: string, kind: 'thought' | 'sound', text: string) {
-    if (this.told[key]) return;
-    this.told[key] = true;
-    this.g.ui.caption(kind, text);
   }
 
   /** Move, refusing slopes too steep to climb and sliding around solid things. */

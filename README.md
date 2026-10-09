@@ -19,6 +19,7 @@ internet. (Chrome, Edge, Safari or Firefox on a laptop or desktop. Keyboard and 
 npm install
 npm run dev      # http://127.0.0.1:5175
 npm run build    # type-checks, builds dist/, refreshes PLAY.html
+npm run voices   # record any new or changed lines (needs FISH_API_KEY in .env.local)
 ```
 
 On Daniel's Mac, Node is not on the PATH; use the Codex runtime's Node directly:
@@ -42,7 +43,13 @@ $NODE node_modules/typescript/bin/tsc --noEmit && $NODE node_modules/vite/bin/vi
 | R | Read what you carry (the parchment; later, the sealed roll) |
 | Esc / P | Pause · save · load · settings |
 
-The whole slice can be played on the keyboard alone. Settings include text size, high-contrast
+**On a phone or tablet** (turn it sideways): the left thumb walks, dragging the right side looks
+around, and you tap the prompt to talk, tap to continue, and tap a reply to choose it.
+Buttons: Hurry/Run, Leap, Read, and II for pause.
+
+Every spoken line has a recorded voice (computer-generated; see `DEV_NOTES.md`, section 9).
+
+The whole slice can be played on the keyboard alone, or by touch alone. Settings include text size, high-contrast
 panels, sound captions, an assist mode (gentler mire and arrows), hold/toggle run, camera
 auto-follow, camera shake off, look sensitivity and inversion, volumes, shadows and picture quality.
 

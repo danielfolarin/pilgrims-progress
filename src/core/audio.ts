@@ -58,6 +58,17 @@ export class AudioSys {
   private step = 0;
   private nextT = 0;
   private lastDeg = 4;
+  private ducked = false;
+
+  /** Where other sound sources (the recorded voices) should connect. */
+  get output(): AudioNode | null { return this.ctx ? this.master : null; }
+
+  /** Lower the music while someone is speaking. */
+  duck(on: boolean) {
+    if (this.ducked === on) return;
+    this.ducked = on;
+    this.applyVolumes();
+  }
 
   /** Must be called from a user gesture (browsers block audio before one). */
   init() {
@@ -106,7 +117,7 @@ export class AudioSys {
 
   applyVolumes() {
     if (!this.ctx) return;
-    this.musicBus.gain.setTargetAtTime(this.musicVol * 0.55, this.ctx.currentTime, 0.1);
+    this.musicBus.gain.setTargetAtTime(this.musicVol * 0.55 * (this.ducked ? 0.4 : 1), this.ctx.currentTime, this.ducked ? 0.15 : 0.6);
     this.sfxBus.gain.setTargetAtTime(this.sfxVol, this.ctx.currentTime, 0.1);
   }
 

@@ -1,6 +1,6 @@
 # The Unburdened Road — development notes
 
-First playable build, 2026-10-08.
+First playable build, 2026-10-08. Recorded voices and touch controls added the same day.
 
 ## 1. Engine, and why
 
@@ -27,7 +27,8 @@ which hurries everywhere and skips reading, covers it in about 6½ minutes of ga
 
 Working systems: third-person movement and orbit camera, burden effects, branching dialogue with
 remembered choices, one environmental puzzle, a danger encounter with no fail state, a
-checkpoint at every story beat (a dozen), manual save/load, pause, settings, subtitles and sound captions.
+checkpoint at every story beat (a dozen), manual save/load, pause, settings, subtitles and sound captions,
+recorded voices for every spoken line, and touch controls for phones and tablets.
 
 **Not in this build:** the Interpreter's House (its door carries a notice), Hill Difficulty,
 Palace Beautiful, Apollyon, the Valley of the Shadow, Vanity Fair, Doubting Castle, the Delectable
@@ -89,9 +90,14 @@ from the King James Version (public domain).
 
 ## 5. Technical limitations
 
-- **Desktop browsers only.** No touch controls, so phones and tablets cannot play it yet.
-- **No voice acting.** Every line is on-screen text; "subtitles" here means the dialogue box,
-  passing captions for ambient speech and thoughts, and optional captions for sounds.
+- **Phones and tablets: built, not yet tried on a real one.** Touch controls were tested in a
+  desktop browser pretending to be a phone (simulated fingers). Frame rate, heat, the feel of the
+  joystick and sound start-up on an actual iPhone or Android phone are unknown until someone tries.
+  iPhones cannot go full screen from a web page; Android can (Full screen in the menu).
+- **Voices are computer-generated** (Fish Audio), one designed voice per character. Nobody has
+  listened to them all: they were checked by machine for length only. Expect some odd readings.
+  Stage directions in brackets are shown but not spoken. Replies the player picks are not spoken.
+  There are no child voices on offer, so Pip is a young woman's voice.
 - **Simple collision.** The pilgrim is a circle sliding over a height-map, around circles and
   boxes. There is no physics engine; nothing can be pushed, climbed or fallen from.
 - **Camera** avoids terrain and marked buildings, not small props; in tight spots it pulls in close.
@@ -104,7 +110,7 @@ from the King James Version (public domain).
   (Intel, macOS 13); not measured on any other machine. The default
   "Balanced" picture quality renders at 1.5× instead of 2×. "Fast" and shadows-off are in Settings.
 - **Gamepad support is written but has not been tried on hardware.**
-- **Not yet tested:** Safari, Firefox, Windows, and opening `PLAY.html` straight from disk
+- **Not yet tested:** real phones and tablets, Safari, Firefox, Windows, and opening `PLAY.html` straight from disk
   (it was verified served over http and is live at games.thecuriousseekers.com/pilgrims-progress/;
   it contains nothing that should need a server).
 - A small debug handle (`window.__pp`) ships in the build. It is harmless; remove before release.
@@ -123,7 +129,7 @@ Everything you see and hear is a stand-in, generated in code. Nothing is license
 | Sky and weather | A gradient shader, fog, drifting points | Skyboxes, volumetrics, particles |
 | Music | A generative synth score: drone, pad chords, plucked line, one written 8-bar tune at the Cross | A composed, recorded soundtrack |
 | Sound effects | Filtered noise and sine thumps | Recorded foley and ambience |
-| Voices | None | Cast recordings |
+| Voices | Fish Audio text-to-speech, 22 official designed voices (see `voices.config.json`) | Cast recordings, or a listened-through and re-directed set |
 | Fonts, UI | System serif, CSS panels | Designed typography and interface art |
 | Text | Final-draft quality, but unedited by a second reader | Edited script; theological review |
 
@@ -149,8 +155,14 @@ hurrying until winded, the refused jump, keyboard camera, pause freezing game ti
 single-file production build. Screens were inspected at the city, the Slough, Help's bank, the
 arrow field, the gate garden, the walled way, each shot of the Cross scene, the narrows and the end.
 
+Voices and touch: both routes were re-run after the voice change, and every one of the 246 lines
+they speak has a recording. Clip playback, music ducking, the joystick, drag-to-look, the Hurry
+button, tapping the prompt, tapping through a conversation and tapping a reply were each driven
+with simulated touches at phone size, in landscape and upright.
+
 **Not machine-testable and still wanted:** a person playing it through with a mouse for feel
-(camera speed, arrow fairness, how long the Slough takes), and with sound on.
+(camera speed, arrow fairness, how long the Slough takes), with sound on to judge the voices,
+and on a real phone.
 
 ## 8. Where things are
 
@@ -167,16 +179,39 @@ src/game/npc.ts  characters.ts  dialogue.ts  state.ts
 src/game/story.ts     who stands where, triggers, every scripted scene
 src/content/          cast.ts  city.ts  road.ts  hill.ts   <- all the words are here
 src/dev/testkit.ts    automated play-test
+src/core/touch.ts     on-screen joystick and buttons
+src/game/voice.ts     plays the recorded lines
+src/content/lines.ts  narration and one-off lines outside conversations
+scripts/generate-voices.mjs + voices.config.json   records the voices
+public/audio/         the recordings (one mp3 per line)
 ```
 
 To change what anyone says, edit `src/content/`. To add a chapter: extend the corridor keys in
 `terrain.ts`, dress it in `world.ts`, add a stage in `state.ts`, and sequence it in `story.ts`.
 
-## 9. Suggested next steps
+## 9. Voices: how they are made and changed
+
+Every line anyone says or thinks is listed by `src/content/all-lines.ts`. `npm run voices` sends
+each one to Fish Audio with that speaker's voice from `voices.config.json` and saves an mp3 in
+`public/audio/`, named from the speaker and a fingerprint of the words. So:
+
+- **Change a line's words** and run `npm run voices`: only the changed line is recorded again,
+  and the old recording is deleted.
+- **Change a character's voice:** put another voice id in `voices.config.json`, then
+  `npm run voices -- --redo=<speaker>` (for example `--redo=pip`).
+- **Hear before publishing:** `npm run dev` and play; Settings has a voice volume.
+- The API key lives in `.env.local` as `FISH_API_KEY=...` and is never uploaded. The first
+  recording run borrowed the key already saved for Church Mind.
+
+The pilgrim is voiced as a man (Bunyan's Christian); thoughts and the whispers in the Slough use a
+soft separate voice; the Dreamer's narration is a British storyteller.
+
+## 10. Suggested next steps
 
 1. A human play-through, then tune the Slough, the arrows and camera feel from what is found.
 2. Theological and editorial read of `src/content/`, and of section 4 above.
 3. The Interpreter's House as an interactive interior (the brief's "teach through environments").
 4. Hill Difficulty and Palace Beautiful: perseverance, the lost roll, hospitality, friendship.
 5. Replace placeholders in the order players notice them: characters, music, then landscape.
-6. Touch controls, if phones matter.
+6. Try it on real phones; tune the joystick, button sizes and picture quality from what is found.
+7. Listen through the voices; re-cast or re-record the ones that miss.

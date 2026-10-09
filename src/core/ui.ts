@@ -219,7 +219,7 @@ export class UI {
     });
     const f = document.createElement('div');
     f.className = 'foot';
-    f.textContent = def.foot ?? '↑ ↓ choose · Enter select · ← → adjust · Esc back';
+    f.textContent = def.foot ?? (this.g.input.touchMode ? 'Tap to choose' : '↑ ↓ choose · Enter select · ← → adjust · Esc back');
     p.appendChild(f);
     m.appendChild(p);
   }

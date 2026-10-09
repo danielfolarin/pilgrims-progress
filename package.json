@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5175",
     "build": "tsc --noEmit && vite build && cp dist/play.html PLAY.html",
-    "preview": "vite preview --host 127.0.0.1 --port 5175"
+    "preview": "vite preview --host 127.0.0.1 --port 5175",
+    "voices": "node scripts/generate-voices.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"

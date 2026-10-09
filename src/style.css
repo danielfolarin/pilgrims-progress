@@ -118,3 +118,65 @@ body { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, s
 .mi:disabled { opacity: 0.4; cursor: default; }
 .mi .val { float: right; color: var(--gold); font-family: system-ui, sans-serif; font-size: 0.86em; }
 .foot { margin-top: 16px; font-size: 0.7em; opacity: 0.6; font-family: system-ui, sans-serif; }
+
+/* ---- touch controls (phones and tablets) --------------------------------- */
+html, body { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#prompt { pointer-events: auto; cursor: pointer; }
+#touch { position: absolute; inset: 0; display: none; pointer-events: auto; touch-action: none; }
+#stick {
+  position: absolute; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%;
+  border: 2px solid rgba(244, 236, 220, 0.35); background: rgba(20, 18, 16, 0.25); display: none; pointer-events: none;
+}
+#stick.on { display: block; }
+#knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(233, 196, 122, 0.75); }
+.tbtn {
+  position: absolute; min-width: 68px; height: 68px; padding: 0 10px; border-radius: 34px; font: 600 15px system-ui, sans-serif;
+  color: var(--ink); background: rgba(22, 19, 17, 0.6); border: 2px solid rgba(244, 236, 220, 0.4); touch-action: none;
+}
+.tbtn.active { background: rgba(233, 196, 122, 0.85); color: #1b1408; border-color: var(--gold); }
+#t-run { right: calc(18px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom)); }
+#t-jump { right: calc(100px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom)); }
+#t-read { right: calc(18px + env(safe-area-inset-right)); bottom: calc(104px + env(safe-area-inset-bottom)); min-width: 58px; height: 46px; font-size: 13px; }
+#t-pause { right: calc(14px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); min-width: 46px; height: 46px; font-size: 14px; letter-spacing: 2px; }
+#rotate { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: rgba(8, 7, 6, 0.9); pointer-events: auto; padding: 24px; z-index: 5; }
+#rotate p { font-size: 1.3em; margin: 0 0 18px; }
+#rotate button { font: inherit; font-size: 0.9em; color: var(--ink); background: transparent; border: 1px solid var(--edge); border-radius: 20px; padding: 8px 18px; }
+
+#ui.touch #prompt { padding: 12px 22px; font-size: 1em; border-width: 2px; border-color: var(--gold); bottom: 34%; }
+#ui.touch #hint { right: calc(72px + env(safe-area-inset-right)); }
+#ui.touch #dlg-next { display: none !important; }
+#ui.touch .choice { padding: 11px 14px; }
+#ui.touch .choice .n { display: none; }
+#ui.touch .mi { padding: 11px 14px; }
+#ui.touch #paper-close { visibility: hidden; }
+#ui.touch #paper-close::after { content: 'Tap to put it away'; visibility: visible; float: right; }
+
+/* a phone held sideways: little height, so everything tightens up */
+@media (max-height: 520px) {
+  #ui { font-size: calc(15px * var(--text-scale)); }
+  #objective { top: 10px; left: calc(12px + env(safe-area-inset-left)); max-width: 44vw; padding: 7px 11px; }
+  #hint { top: 10px; max-width: 38vw; padding: 7px 11px; }
+  #dlg { bottom: 2%; width: min(760px, 96vw); padding: 10px 16px 12px; max-height: 92vh; overflow-y: auto; }
+  #dlg-text { min-height: 2.2em; line-height: 1.4; }
+  #dlg-choices { gap: 5px; margin-top: 7px; }
+  #subs { bottom: 3%; }
+  #card { top: 22%; }
+  #card-title { font-size: 1.9em; }
+  .panel { padding: 14px 20px; max-height: 96vh; }
+  .panel h1 { font-size: 1.8em; }
+  .panel .sub { margin: 4px 0 10px; }
+  .mi { padding: 6px 12px; }
+  #ui.touch .mi { padding: 8px 12px; }
+  #paper-inner { padding: 16px 20px; max-height: 90vh; }
+  #menu.title { padding-left: calc(4vw + env(safe-area-inset-left)); }
+}
+/* a phone held upright */
+@media (max-width: 520px) {
+  #ui { font-size: calc(15px * var(--text-scale)); }
+  #objective { max-width: 70vw; }
+  #hint { top: auto; bottom: 44%; right: 10px; left: 10px; max-width: none; }
+  .panel h1 { font-size: 2em; }
+  #menu.title { padding-left: 4vw; background: rgba(8, 7, 6, 0.7); }
+}
+
+.panel, #paper-inner, #dlg { touch-action: pan-y; }

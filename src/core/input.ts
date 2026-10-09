@@ -3,7 +3,7 @@ const MAP: Record<string, string[]> = {
   back: ['KeyS', 'ArrowDown'],
   left: ['KeyA', 'ArrowLeft'],
   right: ['KeyD', 'ArrowRight'],
-  run: ['ShiftLeft', 'ShiftRight', 'Pad7', 'Pad10', 'Pad5'],
+  run: ['ShiftLeft', 'ShiftRight', 'Pad7', 'Pad10', 'Pad5', 'TouchRun'],
   jump: ['Space', 'Pad1'],
   interact: ['KeyE', 'Enter', 'NumpadEnter', 'Pad0'],
   remember: ['KeyR', 'Pad2'],
@@ -30,6 +30,10 @@ export class Input {
   drag = false;
   clicked = false;
   pad = { mx: 0, mz: 0, lx: 0, ly: 0 };
+  /** The on-screen joystick: x = right, y = forward. */
+  touch = { x: 0, y: 0 };
+  /** True once a finger has touched the screen (see touch.ts). */
+  touchMode = false;
   /** Set by the game: whether a canvas click should capture the mouse. */
   wantLock = false;
   /** Fired when the browser drops pointer lock without us asking (usually Esc). */
@@ -49,7 +53,7 @@ export class Input {
     canvas.addEventListener('mousedown', () => {
       this.clicked = true;
       this.drag = true;
-      if (this.wantLock && !this.locked) this.requestLock();
+      if (this.wantLock && !this.locked && !this.touchMode) this.requestLock();
     });
     window.addEventListener('mouseup', () => (this.drag = false));
     window.addEventListener('mousemove', (e) => {
@@ -91,8 +95,8 @@ export class Input {
 
   /** Movement intent in screen space: x = right, y = forward. */
   move() {
-    let x = (this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0) + this.pad.mx;
-    let y = (this.held('fwd') ? 1 : 0) - (this.held('back') ? 1 : 0) - this.pad.mz;
+    let x = (this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0) + this.pad.mx + this.touch.x;
+    let y = (this.held('fwd') ? 1 : 0) - (this.held('back') ? 1 : 0) - this.pad.mz + this.touch.y;
     const l = Math.hypot(x, y);
     if (l > 1) { x /= l; y /= l; }
     return { x, y };

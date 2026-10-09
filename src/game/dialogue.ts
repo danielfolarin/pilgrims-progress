@@ -32,7 +32,9 @@ export async function say(g: Game, who: string, text: string) {
   const c = CAST[who] || { name: who, color: '#fff' };
   for (const n of g.npcs.values()) n.ch.talking = n.id === who;
   g.player.ch.talking = who === 'you';
+  g.voice.say(who, text);
   await g.ui.line(c.name, c.color, text, c.kind || 'say');
+  g.voice.stop();
   for (const n of g.npcs.values()) n.ch.talking = false;
   g.player.ch.talking = false;
 }

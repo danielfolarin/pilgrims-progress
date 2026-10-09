@@ -6,8 +6,12 @@ import { World } from '../world/world';
 import { Player, Collider } from './player';
 import { Npc } from './npc';
 import { Story } from './story';
-import { GameState, Settings, Stage, freshState, latestSave, loadSettings, readSave, saveSettings, writeSave, Slot } from './state';
+import { GameState, Settings, Stage, freshState, hasSavedSettings, latestSave, loadSettings, readSave, saveSettings, writeSave, Slot } from './state';
 import { ROLL_ACCUSED, ROLL_PEACE } from '../content/hill';
+import { CAST } from '../content/cast';
+import { N, type Note } from '../content/lines';
+import { Voice } from './voice';
+import { TouchControls } from '../core/touch';
 
 // The games page one folder up, when this game is served from a folder of a bigger site
 // (games.thecuriousseekers.com/pilgrims-progress/). Opened from a file or on its own
@@ -32,6 +36,7 @@ export class Game {
   input: Input;
   ui: UI;
   audio = new AudioSys();
+  voice = new Voice(this.audio);
   settings: Settings = loadSettings();
   state: GameState = freshState();
   colliders: Collider[] = [];
@@ -54,6 +59,7 @@ export class Game {
   cine: { pos: THREE.Vector3; look: THREE.Vector3; k: number } | null = null;
   /** True while the automated play-test is stepping the simulation by hand. */
   manual = false;
+  touch!: TouchControls;
   private timers: { t: number; res: () => void }[] = [];
   private last = 0;
   private titleT = 0;
@@ -68,6 +74,7 @@ export class Game {
     this.player = new Player(this);
     this.world = new World(this);
     this.story = new Story(this);
+    this.touch = new TouchControls(this);
     this.input.onLockLost = () => { if (this.mode === 'play' && !this.ui.menuOpen) this.pauseMenu(); };
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -79,6 +86,21 @@ export class Game {
   }
 
   npc(id: string) { return this.npcs.get(id)!; }
+
+  /** Called once, the first time a finger touches the screen. */
+  onTouchMode() {
+    // phones: lighter picture unless the player has already chosen their own settings
+    if (!hasSavedSettings()) { this.settings.shadows = false; this.applySettings(); }
+  }
+
+  /** Fill the screen and, where the phone allows it, turn to landscape. */
+  async fullscreen() {
+    try {
+      if (document.fullscreenElement) { await document.exitFullscreen(); return; }
+      await document.documentElement.requestFullscreen();
+      await (screen.orientation as any)?.lock?.('landscape');
+    } catch { /* not supported here (iPhone): the game still plays in the browser window */ }
+  }
 
   // ---- time and scenes --------------------------------------------------------
 
@@ -94,6 +116,14 @@ export class Game {
     this.busy = true;
     this.ui.prompt(null);
     try { await fn(); } finally { if (ep === this.epoch) this.busy = false; }
+  }
+
+  /** A passing line outside a conversation: shown as a subtitle and, if recorded, spoken. */
+  note(n: Note, dur = 0) {
+    const c = CAST[n[0]];
+    const kind = c.kind || 'say';
+    this.ui.caption(kind, n[1], kind === 'say' ? n[2] || c.name : '', c.color, dur);
+    if (!this.ui.dialogueOpen) this.voice.aside(n[0], n[1]);
   }
 
   cineTo(px: number, py: number, pz: number, lx: number, ly: number, lz: number, k = 2.2) {
@@ -127,6 +157,7 @@ export class Game {
     this.cine = null;
     this.shake = 0;
     this.ui.reset();
+    this.voice.stop();
     this.ui.closeMenu();
     this.state = JSON.parse(JSON.stringify(s));
     this.mode = 'play';
@@ -151,6 +182,7 @@ export class Game {
     this.busy = false;
     this.cine = null;
     this.ui.reset();
+    this.voice.stop();
     this.ui.setObjective('');
     this.ui.fade(false, 0.5);
     this.input.releaseLock();
@@ -173,9 +205,10 @@ export class Game {
         { label: 'Settings & accessibility', act: () => this.settingsMenu(() => this.titleMenu()) },
         { label: 'Controls', act: () => this.controlsMenu(() => this.titleMenu()) },
         { label: 'About this build', act: () => this.aboutMenu(() => this.titleMenu()) },
+        ...(this.input.touchMode && document.fullscreenEnabled ? [{ label: 'Full screen', act: () => { this.fullscreen(); } }] : []),
         ...(HUB_LINK ? [{ label: 'All games', act: () => { location.href = HUB_LINK; } }] : []),
       ],
-      foot: '↑ ↓ choose · Enter select · Vertical slice, about 20–30 minutes',
+      foot: this.input.touchMode ? 'Tap to choose · About 20–30 minutes · Best with the phone turned sideways' : '↑ ↓ choose · Enter select · Vertical slice, about 20–30 minutes',
     });
   }
 
@@ -194,6 +227,7 @@ export class Game {
         { label: auto ? `Load last checkpoint — ${auto.label}` : 'Load last checkpoint', disabled: !auto, act: () => auto && this.loadState(auto) },
         { label: 'Settings & accessibility', act: () => this.settingsMenu(() => this.pauseMenu()) },
         { label: 'Controls', act: () => this.controlsMenu(() => this.pauseMenu()) },
+        ...(this.input.touchMode && document.fullscreenEnabled ? [{ label: 'Full screen', act: () => { this.fullscreen(); resume(); } }] : []),
         { label: 'Quit to title', act: () => this.titleMenu() },
       ],
       back: resume,
@@ -224,6 +258,7 @@ export class Game {
         onoff('Camera sway and shake', 'shake'),
         onoff('Invert vertical look', 'invertY'),
         range('Look sensitivity', 'sens', 1, 10),
+        range('Voice volume', 'voice', 0, 10),
         range('Music volume', 'music', 0, 10),
         range('Sound volume', 'sfx', 0, 10),
         onoff('Shadows', 'shadows'),
@@ -247,8 +282,9 @@ export class Game {
         <tr><td><kbd>R</kbd></td><td>Read what you carry (the parchment; later, the roll)</td></tr>
         <tr><td><kbd>Esc</kbd> / <kbd>P</kbd></td><td>Pause · save · load · settings</td></tr>
         </table>
+        <p><b>On a phone or tablet:</b> left thumb walks (a joystick appears under it), drag the right side to look, tap the prompt to talk or use, tap anywhere to continue a conversation, and tap a reply to choose it. Buttons: Hurry/Run, Leap, Read, and II for pause.</p>
         <p>Gamepad (standard layout, untested on hardware): left stick walk, right stick look, A talk/confirm, B leap, X read, RT hurry, Start pause.</p>
-        <p>The whole slice can be played on the keyboard alone.</p>`,
+        <p>The whole slice can be played on the keyboard alone, or by touch alone.</p>`,
       items: [{ label: 'Back', act: back }],
       back,
     });
@@ -261,7 +297,7 @@ export class Game {
         <h3>How it handles grace</h3>
         <p>There is no faith meter, no holiness score and no fail state tied to belief. Choices change relationships and what is said later; they never change whether the pilgrim is welcome. The burden falls by no skill of the player's.</p>
         <h3>What is placeholder</h3>
-        <p>All figures and scenery are procedural low-poly shapes; all music and sound are synthesised in the browser; there is no voice acting (every line is subtitled). See <b>DEV_NOTES.md</b> in the project folder for scope, limits and the full placeholder list.</p>
+        <p>All figures and scenery are procedural low-poly shapes; all music and sound effects are synthesised in the browser; the voices are computer-generated readings, one designed voice per character (every line is also subtitled). See <b>DEV_NOTES.md</b> in the project folder for scope, limits and the full placeholder list.</p>
         <h3>Sources</h3>
         <p>Narration marked “The Dreamer” adapts Bunyan's own wording. Scripture is quoted from the King James Version. The theological emphases are the adaptor's reading of widely taught themes of grace; no living teacher is quoted, imitated, or implied to endorse this game.</p>`,
       items: [{ label: 'Back', act: back }],
@@ -289,6 +325,7 @@ export class Game {
     this.audio.musicVol = s.music / 10;
     this.audio.sfxVol = s.sfx / 10;
     this.audio.applyVolumes();
+    this.voice.volume = s.voice / 10;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, [1, 1.5, 2][s.quality] ?? 1.5));
     this.resize();
   }
@@ -320,6 +357,7 @@ export class Game {
     ui.update(dt);
     const playing = this.mode === 'play' && !ui.menuOpen;
     inp.wantLock = playing;
+    this.touch.update();
 
     if (playing) {
       if (!wasOpen && inp.pressed('pause')) this.pauseMenu();
@@ -365,13 +403,13 @@ export class Game {
       if (label) { bd = d; best = { label, act: it.act }; }
     }
     if (!best && p.carrying >= 0) best = { label: 'Set the board down', act: () => this.story.dropPlank() };
-    ui.prompt(best ? `<b>E</b> ${best.label}` : null);
+    ui.prompt(best ? (this.input.touchMode ? best.label : `<b>E</b> ${best.label}`) : null);
     if (best && this.input.pressed('interact')) { this.audio.blip(); best.act(); return; }
     if (this.input.pressed('remember')) {
       const st = this.state.stage, f = this.state.flags;
       if (st >= Stage.Free) this.run(() => ui.read('The sealed roll', st === Stage.Accused || (st === Stage.After && !f.shadowGone) ? ROLL_ACCUSED : ROLL_PEACE));
       else if (f.metEvangelist) this.run(() => ui.read('A parchment roll', '<p><i>Come unto me, all ye that labour and are heavy laden, and I will give you rest.</i></p>'));
-      else ui.caption('thought', 'The book is in your coat. You know what it says. You have read it until the candle drowned.');
+      else this.note(N.book);
     }
   }
 }

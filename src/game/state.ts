@@ -22,7 +22,7 @@ export interface GameState {
 export interface Settings {
   textSize: number; sens: number; invertY: boolean; toggleRun: boolean; autoCam: boolean;
   shake: boolean; assist: boolean; captions: boolean; typewriter: boolean; contrast: boolean;
-  music: number; sfx: number; shadows: boolean;
+  music: number; sfx: number; voice: number; shadows: boolean;
   /** 0 fast, 1 balanced, 2 sharp: caps the render resolution on high-density screens. */
   quality: number;
 }
@@ -43,7 +43,7 @@ export function freshState(): GameState {
 
 export const defaultSettings = (): Settings => ({
   textSize: 1, sens: 5, invertY: false, toggleRun: false, autoCam: true, shake: true, assist: false,
-  captions: true, typewriter: true, contrast: false, music: 7, sfx: 8, shadows: true, quality: 1,
+  captions: true, typewriter: true, contrast: false, music: 7, sfx: 8, voice: 8, shadows: true, quality: 1,
 });
 
 function store(): Storage | null {
@@ -56,6 +56,10 @@ export function loadSettings(): Settings {
     if (raw) return { ...defaultSettings(), ...JSON.parse(raw) };
   } catch { /* fall through to defaults */ }
   return defaultSettings();
+}
+
+export function hasSavedSettings() {
+  try { return !!store()?.getItem(KEY + '.settings'); } catch { return false; }
 }
 
 export function saveSettings(s: Settings) {

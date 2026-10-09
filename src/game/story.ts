@@ -8,6 +8,7 @@ import { CAST } from '../content/cast';
 import { damp, segDist, smooth } from '../core/util';
 import { detour, groundY, height, mireAt, onPlank, JOSS_SPOT, SLOTS, PLANK_NAME, plankFits, laid, MUD_Y } from '../world/terrain';
 import { COVER, TOWER } from '../world/world';
+import { N, TOO_SHORT } from '../content/lines';
 import { AMBIENT, CHRISTIANA, EVANGELIST, HESTER, INTRO, PIP, SLIP_HTML, VANE, WELL, tallyHtml } from '../content/city';
 import { BANK, DETOUR, HELP_AFTER, JOSS, JOSS_AFTER, JOSS_BARKS, LANDING, LEAVE, PLIABLE_BARKS, PLIABLE_FALLS, RESCUED, SIGN_HTML, SUNK, WHISPERS, WISEMAN } from '../content/road';
 import { ACCUSER_PASSED, CARRIER, CROSS_AFTER, CROSS_ARRIVE, CROSS_FALL_1, CROSS_FALL_2, GARDEN_REST, GOODWILL, GOODWILL_AFTER, INTERPRETER_HTML, KNOCK, PRAYER, TOMB, WAY_LINES, accuserScript } from '../content/hill';
@@ -72,14 +73,14 @@ export class Story {
       if (first && this.f.metEvangelist) this.setStage(Stage.Leave, 'The stubble field');
     });
     talk('help', async () => {
-      if (this.st === Stage.Rescue) { await say(g, 'help', "I've got him. Boards, pilgrim — and mind the lengths."); g.ui.closeDialogue(); }
+      if (this.st === Stage.Rescue) { await say(g, N.helpBusy[0], N.helpBusy[1]); g.ui.closeDialogue(); }
       else await lines('help', HELP_AFTER)();
     });
     talk('joss', async () => { if (this.st === Stage.Rescue) await this.rescueScene(); else await lines('joss', JOSS_AFTER)(); });
     talk('wiseman', () => play(g, WISEMAN));
     talk('goodwill', lines('goodwill', GOODWILL_AFTER));
-    talk('shining1', lines('shining1', ['Go in peace. The road is before you, and so is he.']));
-    talk('shining2', lines('shining2', ['The garment suits you. It was cut for you before you ever knocked.']));
+    talk('shining1', lines('shining1', [N.shining1Idle[1]]));
+    talk('shining2', lines('shining2', [N.shining2Idle[1]]));
     talk('shining3', () => this.tombScene());
     talk('carrier', () => play(g, CARRIER));
 
@@ -110,8 +111,8 @@ export class Story {
     add(at(-5.8, 321), 2.5, () => 'Read the notice', scene(() => g.ui.read("At the Interpreter's door", INTERPRETER_HTML)));
     add(at(19.4, 421), 3.0, () => (this.st >= Stage.Free ? 'Look into the sepulchre' : null), scene(() => this.tombScene()));
     add(at(0, 412), 2.5, () => (this.st >= Stage.Free ? 'Stand at the Cross' : null), scene(async () => {
-      await say(g, 'thought', 'It is only wood. It is not the wood that did it.');
-      await say(g, 'thought', 'You stand a while anyway. There is nowhere you are required to be.');
+      await say(g, N.cross1[0], N.cross1[1]);
+      await say(g, N.cross2[0], N.cross2[1]);
       g.ui.closeDialogue();
     }));
     add(at(-4.2, 498.9), 2.5, () => (this.st >= Stage.After ? 'Sit by the spring and pray' : null), scene(async () => {
@@ -141,10 +142,10 @@ export class Story {
             g.audio.thud();
             g.world.syncPlanks();
             g.ui.caption('sound', '[The board drops across the gap and holds.]');
-            if (laid.every(Boolean)) g.ui.caption('thought', 'The boardwalk reaches him.');
+            if (laid.every(Boolean)) g.note(N.boardwalk);
           } else {
             g.audio.splash();
-            g.ui.caption('thought', `The ${PLANK_NAME[p.carrying]} board will not reach. It dips into the black water, and you haul it back.`);
+            g.note(TOO_SHORT[p.carrying]);
           }
         } else {
           const i = pl.indexOf(si);
@@ -157,7 +158,7 @@ export class Story {
   dropPlank() {
     const g = this.g, p = g.player;
     if (p.carrying < 0) return;
-    if (mireAt(p.x, p.z)) { g.ui.caption('thought', 'Not here. The mire would have it.'); return; }
+    if (mireAt(p.x, p.z)) { g.note(N.notHere); return; }
     const fx = p.x + Math.sin(p.yaw) * 0.9, fz = p.z + Math.cos(p.yaw) * 0.9;
     const ok = !mireAt(fx, fz);
     g.state.plankPos[p.carrying] = [ok ? fx : p.x, ok ? fz : p.z, p.yaw + Math.PI / 2];
@@ -186,7 +187,7 @@ export class Story {
       case Stage.Road: return f.wiseman === 'followed' && !f.detourDone ? o('Take the west road to the village of Morality.') : o('Follow the road north, toward the light.');
       case Stage.Gate: return o('Reach the Wicket Gate, and knock.', 'Arrows fall where the red ring shows. Keep moving, or keep a stone between you and the tower.');
       case Stage.Way: return o('Go up the walled way to the hill.', f.rested ? '' : "Rest in Goodwill's garden first, if you like.");
-      case Stage.Free: return f.sawTomb ? o('Go on. The road continues beyond the hill.') : o('Look into the sepulchre, a little below the Cross.', 'You can run now (Shift), and leap (Space).');
+      case Stage.Free: return f.sawTomb ? o('Go on. The road continues beyond the hill.') : o('Look into the sepulchre, a little below the Cross.', 'You can run now, and leap.');
       case Stage.Accused: return o('The weight feels real. Find out whether it is.');
       case Stage.After: return f.lettersDone ? o('Walk on, to where the road looks out over the valley.') : o('Rest at the spring. A carrier waits by the milestone.');
       default: return o('The first part of the journey is complete.', 'You may keep walking.');
@@ -340,7 +341,7 @@ export class Story {
             ui.caption('sound', this.once('tremor') ? '[The ground shudders. Somewhere a wall cracks. Nobody looks up.]' : '[A tremor. Dust sifts down.]');
           }
         }
-        if (st === Stage.City && p.z > 52 && this.once('field')) ui.caption('thought', 'Stubble, and wind, and room. On a rise ahead, someone is standing with a lamp on a staff.');
+        if (st === Stage.City && p.z > 52 && this.once('field')) g.note(N.field);
         if (st === Stage.Leave && p.z > 74) g.run(() => this.leaveScene());
         break;
       }
@@ -348,9 +349,9 @@ export class Story {
         this.barkT -= dt;
         if (this.barkT <= 0 && this.barkI < PLIABLE_BARKS.length && p.z < 126) {
           this.barkT = 9;
-          ui.caption('say', PLIABLE_BARKS[this.barkI++], 'Pliable', CAST.pliable.color);
+          g.note(['pliable', PLIABLE_BARKS[this.barkI++]]);
         }
-        if (p.z > 122 && this.once('sloughsight')) ui.caption('thought', 'The road runs down into reeds and grey water, and does not obviously come out again.');
+        if (p.z > 122 && this.once('sloughsight')) g.note(N.sloughSight);
         if (mireAt(p.x, p.z)) g.run(() => this.pliableFalls());
         break;
       }
@@ -358,7 +359,7 @@ export class Story {
         this.whisperT -= dt;
         if (this.whisperT <= 0 && p.z > 134) {
           this.whisperT = 11;
-          ui.caption('thought', WHISPERS[this.whisperI++ % WHISPERS.length]);
+          g.note(['thought', WHISPERS[this.whisperI++ % WHISPERS.length]]);
         }
         if (p.z > 171.4 && p.x < 16) g.run(() => this.bankScene());
         break;
@@ -367,7 +368,7 @@ export class Story {
         this.barkT -= dt;
         if (this.barkT <= 0) {
           this.barkT = 16;
-          ui.caption('say', JOSS_BARKS[this.barkI++ % JOSS_BARKS.length], 'Joss', CAST.joss.color);
+          g.note(['joss', JOSS_BARKS[this.barkI++ % JOSS_BARKS.length]]);
         }
         break;
       }
@@ -377,13 +378,13 @@ export class Story {
           const wgt = smooth(0.28, 0.86, d.t);
           p.weightMul = 1 - 0.42 * wgt;
           g.fire = wgt;
-          if (d.t > 0.45 && this.once('sinai')) ui.caption('thought', 'The hill leans out over the road. Was it leaning before?');
+          if (d.t > 0.45 && this.once('sinai')) g.note(N.sinai);
           if (d.t > 0.62 && this.once('sinai2')) { g.audio.rumble(2.2, 0.6); g.shake = 0.8; ui.caption('sound', '[Fire flickers in the rock. The straps bite deeper.]'); }
           if (d.t > 0.85) g.run(() => this.detourScene());
         } else { p.weightMul = 1; g.fire = 0; }
         if (p.z > 263.5) {
           this.setStage(Stage.Gate, 'In sight of the Gate');
-          ui.caption('thought', 'There: the light, over a little gate in a long wall. And across the field from it, a black tower.');
+          g.note(N.gateSight);
         }
         break;
       }
@@ -393,25 +394,25 @@ export class Story {
       case Stage.Way: {
         for (let i = 0; i < WAY_LINES.length; i++) {
           const [z, kind, text] = WAY_LINES[i];
-          if (p.z > z && this.once('way' + i)) ui.caption(kind, text, '', '', 8);
+          if (p.z > z && this.once('way' + i)) g.note([kind, text], 8);
         }
         if (p.z > 401.5) g.run(() => this.crossScene());
         break;
       }
       case Stage.Free: {
-        if (p.leaps >= 3 && this.once('leaps')) ui.caption('dream', 'Three leaps for joy. (Bunyan counted them, too.)');
-        if (p.z > 440 && !f.sawTomb && this.once('skiptomb')) ui.caption('thought', 'The burden went down into that hollow. Part of you wants to see where. It will keep; so will the road.');
+        if (p.leaps >= 3 && this.once('leaps')) g.note(N.leaps);
+        if (p.z > 440 && !f.sawTomb && this.once('skiptomb')) g.note(N.skipTomb);
         if (p.z > 464) g.run(() => this.accuserScene());
         break;
       }
       case Stage.Accused: {
         this.hintT += dt;
-        if (this.hintT > 9 && this.once('shint')) ui.caption('thought', 'It feels exactly as heavy as the old one. Is it? (Try to run — hold Shift — or leap.)', '', '', 9);
+        if (this.hintT > 9 && this.once('shint')) g.note(N.shadowHint, 9);
         if ((p.ranFor > 0.7 || p.leaps > 0) && !f.weighsNothing) {
           f.weighsNothing = true;
-          ui.caption('thought', 'You run — and you can run. The shape on your back has no straps. It weighs what a shadow weighs.', '', '', 8);
+          g.note(N.weighsNothing, 8);
         }
-        if (p.z < 452 && this.once('lookback')) ui.caption('thought', 'Behind you the hill is still there, and the Cross on it, small and plain. It has not moved.');
+        if (p.z < 452 && this.once('lookback')) g.note(N.lookBack);
         if (p.z > 478.4) g.run(() => this.throughScene());
         break;
       }
@@ -428,11 +429,9 @@ export class Story {
             p.ch.setBurden('none');
             (p.ch.shadowBurden.children[0] as THREE.Mesh<any, THREE.MeshBasicMaterial>).material.opacity = 0.42;
             ui.setVignette(0);
-            ui.caption('thought', 'It thinned as you walked. Not all at once, and not because you argued well. The burden is in the grave. This was only its shadow.', '', '', 10);
+            g.note(N.thinned, 10);
             const harm = f.slip === 'vane' || f.christianaParting === 'angry' || f.pliableParting === 'bitter';
-            this.later(g.wait(8), () => ui.caption('thought', harm
-              ? 'Some of what he said was true: the facts, not the verdict. There are things to put right. For the first time, you are not too afraid to look at them.'
-              : 'He will be back. But you know now what he is made of.', '', '', 10));
+            this.later(g.wait(8), () => g.note(harm ? N.harmTrue : N.harmNone, 10));
             g.checkpoint('The spring');
           }
         }
@@ -463,7 +462,7 @@ export class Story {
       await g.ui.fade(true, 0.4);
       p.place(p.lastFirm.x, p.lastFirm.z, p.yaw);
       p.snapCamera();
-      g.ui.caption('thought', SUNK[this.sunkN++ % SUNK.length]);
+      g.note(['thought', SUNK[this.sunkN++ % SUNK.length]]);
       await g.wait(0.5);
       await g.ui.fade(false, 0.5);
     });
@@ -521,10 +520,8 @@ export class Story {
         g.shake = 0.8;
         p.stagger = 1.1;
         p.vx = -1.5; p.vz = -5.5;
-        g.ui.caption(this.once('arrowhit') ? 'thought' : 'sound', this.f.b_arrowhit2 ? '[An arrow strikes your pack and spins you round.]'
-          : 'The arrow buries itself in the burden. For once the thing is good for something.');
-        this.f.b_arrowhit2 = true;
-        if (a.hits === 3) g.ui.caption('say', 'Not the open ground! Stone to stone — and then run for the door!', 'A voice from the gate', CAST.goodwill.color);
+        if (this.once('arrowhit')) g.note(N.arrowBurden); else g.ui.caption('sound', '[An arrow strikes your pack and spins you round.]');
+        if (a.hits === 3) g.note(N.gateVoice);
       } else {
         g.audio.thud();
         const s = w.stuck[a.n++ % w.stuck.length];
@@ -552,7 +549,9 @@ export class Story {
       g.cineTo(-9.4, height(-9.4, -18.6) + 2.3, -18.6, p.x, p.y + 1.25, p.z, 0.7);
       await play(g, INTRO);
       g.cine = null;
-      g.ui.hint('<b>W</b><b>A</b><b>S</b><b>D</b> walk &nbsp;·&nbsp; mouse or <b>J</b><b>L</b> look<br/><b>Shift</b> hurry &nbsp;·&nbsp; <b>E</b> talk &nbsp;·&nbsp; <b>Esc</b> pause', 14);
+      g.ui.hint(g.input.touchMode
+        ? 'Left thumb: walk. Drag the right side: look around.<br/>Tap the prompt to talk. <b>II</b> pauses.'
+        : '<b>W</b><b>A</b><b>S</b><b>D</b> walk &nbsp;·&nbsp; mouse or <b>J</b><b>L</b> look<br/><b>Shift</b> hurry &nbsp;·&nbsp; <b>E</b> talk &nbsp;·&nbsp; <b>Esc</b> pause', 14);
     });
   }
 
@@ -568,7 +567,7 @@ export class Story {
     const g = this.g, p = g.player, ob = this.N('obstinate'), pl = this.N('pliable');
     ob.place(p.x - 1, p.z - 17, 0);
     pl.place(p.x + 1.4, p.z - 18, 0);
-    g.ui.caption('say', 'Oi! Stop! Stop there!', 'Obstinate', CAST.obstinate.color);
+    g.note(N.oiStop);
     g.cineTo(p.x + 4.5, p.y + 2.4, p.z + 5, p.x, p.y + 1.2, p.z - 3, 1.6);
     p.face(p.x, p.z - 10);
     await Promise.all([ob.walkTo(p.x - 1.1, p.z - 2.5, 4.6), pl.walkTo(p.x + 1.3, p.z - 2.8, 4.6)]);
@@ -631,7 +630,7 @@ export class Story {
     p.snapCamera();
     this.setStage(Stage.Rescue, 'Sound ground');
     this.barkT = 10;
-    g.ui.hint('<b>E</b> lifts a board, lays it across a gap, or takes it up again. Three boards, three gaps — the lengths matter.', 12);
+    g.ui.hint((g.input.touchMode ? 'Tap the prompt to lift a board, lay it across a gap, or take it up again.' : '<b>E</b> lifts a board, lays it across a gap, or takes it up again.') + ' Three boards, three gaps — the lengths matter.', 12);
   }
 
   private async rescueScene() {
@@ -676,7 +675,7 @@ export class Story {
     ev.face(p.x, p.z);
     await g.wait(0.6);
     await g.ui.fade(false, 0.8);
-    await say(g, 'evangelist', "There. The light's ahead of you again. I shall not be far.");
+    await say(g, N.evBack[0], N.evBack[1]);
     g.ui.closeDialogue();
     this.later(ev.walkTo(9, 228, 2.8), () => ev.show(false));
     g.checkpoint('The fork in the road');
@@ -778,7 +777,7 @@ export class Story {
     const s3 = this.N('shining3');
     s3.place(4.4, 409.6, 0);
     s3.walkTo(17.3, 418.5, 2.6);
-    g.ui.hint('The weight is gone. <b>Shift</b> runs. <b>Space</b> leaps. <b>R</b> reads the roll you were given.', 14);
+    g.ui.hint(g.input.touchMode ? 'The weight is gone. <b>Run</b> runs. <b>Leap</b> leaps. <b>Read</b> opens the roll you were given.' : 'The weight is gone. <b>Shift</b> runs. <b>Space</b> leaps. <b>R</b> reads the roll you were given.', 14);
   }
 
   shiningArrive() {
@@ -826,7 +825,7 @@ export class Story {
     g.cineTo(p.x + 2.6, p.y + 2.0, p.z - 4.6, -4, height(-4, 475.6) + 2.3, 475.6, 1.2);
     p.face(acc.x, acc.z);
     await g.wait(1.2);
-    await say(g, 'dream', "A little below the hill, where the road pinched between two rocks, something waited that knew the pilgrim's name.");
+    await say(g, N.accuserIntro[0], N.accuserIntro[1]);
     await play(g, accuserScript(this.f));
     g.cine = null;
     p.snapCamera();
@@ -851,8 +850,8 @@ export class Story {
   private async endScene() {
     const g = this.g, p = g.player, f = this.f;
     g.cineTo(p.x - 2.5, p.y + 3.2, p.z - 7.5, 20, p.y + 30, 700, 0.8);
-    await say(g, 'dream', 'Then I saw that the road went down from that place to the foot of a hill; and the name of the hill was Difficulty.');
-    await say(g, 'thought', 'It is a long way. You find you are not afraid of its being long.');
+    await say(g, N.end1[0], N.end1[1]);
+    await say(g, N.end2[0], N.end2[1]);
     g.ui.closeDialogue();
     this.setStage(Stage.End, 'The view toward Hill Difficulty');
     g.cine = null;

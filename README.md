@@ -6,6 +6,10 @@ to the Cross and one accusation beyond it.
 
 ## Play it
 
+**Online:** <https://games.thecuriousseekers.com/pilgrims-progress/> (listed on the games page at
+<https://games.thecuriousseekers.com>). Every push to `main` on GitHub (`danielfolarin/pilgrims-progress`)
+rebuilds and republishes it; see `.github/workflows/deploy.yml`.
+
 **Easiest:** double-click `PLAY.html`. It is the whole game in one file; it needs no server and no
 internet. (Chrome, Edge, Safari or Firefox on a laptop or desktop. Keyboard and mouse, or a gamepad.)
 

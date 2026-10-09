@@ -105,7 +105,8 @@ from the King James Version (public domain).
   "Balanced" picture quality renders at 1.5× instead of 2×. "Fast" and shadows-off are in Settings.
 - **Gamepad support is written but has not been tried on hardware.**
 - **Not yet tested:** Safari, Firefox, Windows, and opening `PLAY.html` straight from disk
-  (it was verified served over http; it contains nothing that should need a server).
+  (it was verified served over http and is live at games.thecuriousseekers.com/pilgrims-progress/;
+  it contains nothing that should need a server).
 - A small debug handle (`window.__pp`) ships in the build. It is harmless; remove before release.
 
 ## 6. Placeholder assets

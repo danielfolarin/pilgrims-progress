@@ -3,6 +3,8 @@
 // with the pilgrim on auto-walk and replies picked by index, so a whole route can be
 // checked for soft-locks in seconds:   await T.all('kind')   or   await T.all('harsh')
 
+import { SOFT } from '../world/terrain';
+
 type Route = 'kind' | 'harsh';
 const pp = () => (window as any).__pp;
 const g = () => pp().g;
@@ -90,6 +92,23 @@ const T = {
     }
     await T.walk([[6, -3], [1.5, -14], [0, -19]]);
     L.push(...(await T.use('Vane', kind ? [2] : [0, 0])));
+    if (!kind) {
+      // earn three chalk marks the city's way, and feel what they weigh
+      await T.walk([[-6, -12], [-7.3, -3.2]]);
+      L.push(...(await T.use('porter', [0])));
+      const before = g().player.workMul;
+      for (let n = 1; n <= 3; n++) {
+        await T.walk([[-9, -8], [-11.4, -6.8]]);
+        L.push(...(await T.use('Shoulder a load')));
+        await T.walk([[-8, -12], [2, -17.5], [4.6, -21.2]]);
+        L.push(...(await T.use('Set the load down')));
+        await T.step(4.5);
+      }
+      const G = g();
+      L.push(`   (three loads carried: walking pace ${(2.5 * before).toFixed(2)} -> ${(2.5 * G.player.workMul).toFixed(2)} m/s, pack ${G.player.ch.burden.scale.x.toFixed(1)}x, ${G.world.chalks.filter((m: any) => m.visible).length} new strokes on the board)`);
+      T.expect(L, 'three marks earned, and the burden is heavier for it', info().flags.loads === 3 && G.player.workMul < before - 0.15);
+      await T.walk([[2, -17.5]]);
+    }
     await T.walk([[-3.6, -18.4]]);
     L.push(...(await T.use('Tally')));
     T.expect(L, 'slip resolved as ' + info().flags.slip, info().flags.slip === (kind ? 'hester' : 'vane'));
@@ -98,7 +117,13 @@ const T = {
     T.expect(L, 'met Evangelist, stage Leave', info().stage === 1);
     await T.walk([[4, 52], [0, 40], [-0.5, 20], [-3.6, 8], [-6, -6], [-14.3, -13.5]]);
     L.push(...(await T.use('Christiana', [kind ? 0 : 2])));
-    await T.walk([[-6, -6], [-3.6, 8], [-0.5, 20], [0, 40], [2, 60], [3, 76]]);
+    // the chase: the kind route hurries and gets clear; the harsh route (three loads heavier) dawdles and is caught
+    await T.walk([[-6, -6], [-3.6, 8], [-0.5, 20], [0, 40], [2, 60], [2, 67]]);
+    await T.step(0.3);
+    T.expect(L, 'the chase begins past the stubble field', !!g().story.chase);
+    const escaped = await T.walk([[1, 80], [-4, 96], [-3, 106]], kind ? 9 : 1.7, 200);
+    L.push(`   (caught ${info().flags.chaseGrabs || 0} time(s); ended at z=${info().z})`);
+    T.expect(L, kind ? 'got clear without being dragged back' : 'caught three times, and let go', !escaped && (kind ? !info().flags.chaseGrabs : info().flags.chaseGrabs === 3));
     L.push(...(await T.talk([0])));
     T.expect(L, 'left the city with Pliable, stage Plain', info().stage === 2);
     return L;
@@ -114,7 +139,10 @@ const T = {
     await T.step(3);
     L.push(`   (waded off the tussocks: now at ${info().x},${info().z}, sink ${info().sink})`);
     T.sunk = 0;
-    const ok = await T.walk([[2, 137], [6, 143], [0.5, 148], [7, 153.5], [1, 159], [8, 164], [3, 169.5], [3, 173]], 9, 40);
+    await T.walk([[2, 137], [6, 143], [0.5, 148], [7, 153.5], [1, 159], [5, 162]], 9, 40);
+    await T.step(2.4);   // linger on a rotten tussock
+    T.expect(L, 'the rotten tussock gave way under the pilgrim', SOFT[0].down >= 1 && info().sink > 0);
+    const ok = await T.walk([[9, 165.5], [3, 169.5], [3, 173]], 9, 40);
     L.push(`   (went under ${T.sunk} time(s) and was returned to firm ground)`);
     T.expect(L, 'crossed by the tussocks to the far bank', !ok && info().busy);
     L.push(...(await T.talk(kind ? [1, 0, 0, 0, 0] : [0, 1, 1, 2, 0, 0])));
@@ -124,6 +152,9 @@ const T = {
 
   async rescue() {
     const L: string[] = [];
+    await T.walk([[14.2, 184.5]]);
+    L.push(...(await T.use('Help', [0])));
+    T.expect(L, 'asked Help about his limp (now optional)', !!info().flags.askedLimp);
     await T.walk([[7, 180.8]]);
     L.push(...(await T.use('short board')));
     await T.walk([[14, 185.6], [16.6, 186]]);
@@ -171,6 +202,8 @@ const T = {
 
   async way() {
     const L: string[] = [];
+    L.push(...(await T.use('Goodwill', [0])));
+    T.expect(L, "Goodwill's questions are there for the asking", info().flags.askedGoodwill === 1);
     await T.walk([[-4.4, 312.2]]);
     L.push(...(await T.use('Sit and eat')));
     const ok = await T.walk([[0, 320], [0, 338], [0, 402]], 9, 200);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Game } from './game';
 import { Character, OLD_ROBE } from './characters';
 import { angDiff, clamp, damp } from '../core/util';
-import { groundY, height, mireAt, onPlank, WORLD_END_Z, PLANK_LEN } from '../world/terrain';
+import { groundY, height, mireAt, onPlank, softAt, WORLD_END_Z, PLANK_LEN } from '../world/terrain';
 import { N } from '../content/lines';
 
 export type Collider =
@@ -19,6 +19,10 @@ export class Player {
   burden: 'real' | 'none' | 'shadow' = 'real';
   /** <1 when something (the hill of Legality) is adding to the load. */
   weightMul = 1;
+  /** <1 for every load carried to the Tally-House: what was earned is carried. */
+  workMul = 1;
+  /** Carrying a crate for the porter. */
+  crate = false;
   breath = 1;
   winded = 0;
   sink = 0;
@@ -89,8 +93,9 @@ export class Player {
     const moving = Math.hypot(dx, dz) > 0.05;
 
     // speed: what the burden allows
-    let walk = free ? 4.6 : 2.5 * this.weightMul;
-    let run = free ? 7.4 : 3.5 * this.weightMul;
+    const weight = this.weightMul * this.workMul;
+    let walk = free ? 4.6 : 2.5 * weight;
+    let run = free ? 7.4 : 3.5 * weight;
     if (!free && !this.auto) {
       if (wantRun && moving && this.winded <= 0) {
         this.breath -= dt / 5.5;
@@ -106,7 +111,7 @@ export class Player {
     target = Math.min(target, maxSpeed);
     const mire = mireAt(this.x, this.z);
     if (mire) target *= mire === 2 ? 0.4 : 0.55;
-    if (this.carrying >= 0) target *= 0.85;
+    if (this.carrying >= 0 || this.crate) target *= 0.85;
     if (wantRun && moving && free && !this.auto) this.ranFor += dt;
 
     // the burden makes every start and stop sluggish
@@ -128,9 +133,9 @@ export class Player {
 
     // sinking
     const assist = g.settings.assist ? 0.5 : 1;
-    if (mire && this.grounded) this.sink = Math.min(1, this.sink + (dt / (mire === 2 ? 1.3 : 7.5)) * assist);
-    else this.sink = Math.max(0, this.sink - dt / 1.3);
-    if (!mire && this.grounded) this.lastFirm = { x: this.x, z: this.z };
+    if (mire && this.grounded) this.sink = Math.min(1, this.sink + (dt / (mire === 2 ? 1.0 : 5.2)) * assist);
+    else this.sink = Math.max(0, this.sink - dt / 2.2);
+    if (!mire && this.grounded && !softAt(this.x, this.z)) this.lastFirm = { x: this.x, z: this.z };
 
     // footsteps
     const sp = this.speed;
@@ -148,9 +153,10 @@ export class Player {
     const wob = this.stagger > 0 ? Math.sin(this.stagger * 22) * 0.25 : 0;
     this.ch.root.position.set(this.x, this.y - this.sink * 0.78, this.z);
     this.ch.root.rotation.set(0, this.yaw, wob);
-    const lean = free ? (sp > 5 ? 0.14 : 0) : 0.42 + (1 - this.weightMul) * 0.7 + (this.winded > 0 ? 0.12 : 0);
+    const lean = free ? (sp > 5 ? 0.14 : 0) : 0.42 + (1 - weight) * 0.7 + (this.winded > 0 ? 0.12 : 0);
     this.ch.update(dt, sp, lean, free ? 0 : 0.34);
     this.ch.setCarry(this.carrying >= 0 ? PLANK_LEN[this.carrying] : 0);
+    this.ch.setCrate(this.crate);
   }
 
   /** Move, refusing slopes too steep to climb and sliding around solid things. */
@@ -185,7 +191,7 @@ export class Player {
       }
     }
     for (const n of this.g.npcs.values()) {
-      if (!n.visible || n.follow || n.ghost) continue;
+      if (!n.visible || n.follow || n.ghost || n.chase > 0) continue;
       const ex = this.x - n.x, ez = this.z - n.z, d = Math.hypot(ex, ez), min = 0.5 + RADIUS;
       if (d < min && d > 1e-5) { this.x = n.x + (ex / d) * min; this.z = n.z + (ez / d) * min; }
     }

@@ -1,10 +1,13 @@
 import type { Script } from '../game/dialogue';
 
+// Said once the chase is over: out past the milestone, everyone out of breath.
 export const LEAVE: Script = {
   start: [
-    ['obstinate', 'Oi! Stop there!'],
-    ['you', 'Obstinate. Pliable.'],
-    ['obstinate', "Your wife's standing in the lane looking at the gate. Come back. Whatever the old man sold you, come back, and I'll say nothing, and nobody'll chalk it."],
+    {
+      when: (f) => (f.chaseGrabs || 0) >= 3,
+      then: [['obstinate', "(Bent double.) Three times I've had hold of you, and three times you've pulled loose. I'll not break your arm to save your neck."]],
+    },
+    ['obstinate', "(Hands on his knees, panting.) Your wife's standing in the lane looking at the gate. Come back. Whatever the old man sold you, come back, and I'll say nothing, and nobody'll chalk it."],
     {
       choice: [
         {
@@ -19,12 +22,23 @@ export const LEAVE: Script = {
     },
     ['you', "I think there's someone who takes it. That's all I've got."],
     ['pliable', 'Ob… what if there is?'],
-    ['obstinate', 'Oh, not you too.'],
     ['pliable', "I'm only going to look. I'll walk as far as the marsh. If it's nothing, I'll be home for supper."],
-    ['obstinate', "You'll be home for supper smelling of bog. The pair of you."],
     ['obstinate', "(Lower, to you.) When it goes wrong — the Field Gate doesn't lock. I'll see to that."],
   ],
 };
+
+/** Shouted during the chase out of the city. */
+export const CHASE_BARKS: [string, string][] = [
+  ['obstinate', "Stop! You'll not get past the marsh!"],
+  ['pliable', 'Wait! Just wait — tell me what he said!'],
+  ['obstinate', 'Come back, you fool! Think of the children!'],
+  ['obstinate', "I'm not chasing you all the way to the Slough!"],
+];
+export const GRAB_BARKS: [string, string][] = [
+  ['obstinate', 'Got you. Home. Now.'],
+  ['obstinate', "Don't make me carry you back!"],
+  ['obstinate', "Hold still, will you? It's for your own good!"],
+];
 
 export const PLIABLE_BARKS = [
   "So what's there, exactly? At the end? Go on.",
@@ -143,21 +157,6 @@ export const LANDING: Script = {
   start: [
     ['dream', 'Then Help gave the pilgrim his hand, and drew them out, and set them upon sound ground.'],
     ['help', "There. Sit a minute. Nobody's timing you."],
-    ['you', "Why doesn't someone mend this place? People must fall in every week."],
-    ['help', "Every day. And it's been mended longer than I've been here: cartloads of good sound teaching, tipped in. It's what drains down to this spot that's the trouble — every fear, every 'I'm not the sort they'd want.' The ground won't hold under it."],
-    ['help', "So there are steps. And there's me."],
-    {
-      choice: [
-        {
-          t: "You're limping.",
-          then: [
-            ['help', 'Since I was nineteen. I ask about it most mornings. Still asking.'],
-            ['help', "Meanwhile there's the rope. Don't make a sermon of it; I don't."],
-          ],
-        },
-        { t: 'Thank you.', then: [['help', "You're welcome. Easier to say with dry feet, isn't it."]] },
-      ],
-    },
     ['joss', '(Far off, across the water.) — is somebody there? Please —'],
     ['help', "That's the other one. East arm; that's the deep side. He went in before first light. I've had a line on him since, but I can't haul and hold both, and the boardwalk out to him rotted through this winter."],
     ['help', "I'd not ask, with that on your back. I'm asking."],
@@ -168,6 +167,39 @@ export const LANDING: Script = {
       ],
     },
     ['help', "Three gaps between this bank and him. Three boards lying about — different lengths, so mind which goes where. One at a time; you'll not carry more. I'll keep the line taut."],
+  ],
+};
+
+/** Said across the bank while the pilgrim is fetching boards, not in a conversation. */
+export const HELP_WALK: [string, string][] = [
+  ['you', "Why doesn't someone mend this place? People must fall in every week."],
+  ['help', "Every day. And it's been mended longer than I've been here: cartloads of good sound teaching, tipped in. It's what drains down to this spot that's the trouble — every fear, every 'I'm not the sort they'd want.' The ground won't hold under it."],
+  ['help', "So there are steps. And there's me."],
+];
+
+/** If the pilgrim stops to talk to Help while he is holding the line. */
+export const HELP_BUSY: Script = {
+  start: [
+    {
+      when: (f) => !f.askedLimp,
+      then: [
+        ['help', "I've got him. Boards, pilgrim — and mind the lengths."],
+        {
+          choice: [
+            {
+              t: "You're limping.",
+              set: { askedLimp: true },
+              then: [
+                ['help', 'Since I was nineteen. I ask about it most mornings. Still asking.'],
+                ['help', "Meanwhile there's the rope. Don't make a sermon of it; I don't."],
+              ],
+            },
+            { t: '(Go back to the boards.)' },
+          ],
+        },
+      ],
+      else: [['help', "I've got him. Boards, pilgrim — and mind the lengths."]],
+    },
   ],
 };
 

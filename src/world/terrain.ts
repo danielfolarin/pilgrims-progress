@@ -60,11 +60,21 @@ export interface Hummock { x: number; z: number; r: number }
 const H1 = { x: 21.5, z: 186, r: 2.2 }, H2 = { x: 29.45, z: 187.99, r: 2.0 }, H3 = { x: 35.93, z: 184.85, r: 2.2 };
 export const HUMMOCKS: Hummock[] = [
   { x: 2, z: 137, r: 2.4 }, { x: 6, z: 143, r: 2 }, { x: 0.5, z: 148, r: 1.8 }, { x: 7, z: 153.5, r: 2.2 },
-  { x: 1, z: 159, r: 1.8 }, { x: 8, z: 164, r: 2 }, { x: 3, z: 169.5, r: 2.2 },
+  { x: 1, z: 159, r: 1.8 }, { x: 9, z: 165.5, r: 2 }, { x: 3, z: 169.5, r: 2.2 },
   { x: -7, z: 150, r: 1.6 }, { x: -8, z: 162, r: 1.5 }, { x: 13, z: 147, r: 1.5 },
   H1, H2, H3,
 ];
 export const JOSS_SPOT = { x: 38.75, z: 185.3 };
+
+/** Rotten tussocks: they hold for a moment, then sink (`down` goes 0 -> 1). Reset by Story.sync. */
+export const SOFT = [
+  { x: 5, z: 162, r: 1.5, down: 0 }, { x: 3.6, z: 151, r: 1.4, down: 0 }, { x: -3, z: 155.5, r: 1.5, down: 0 }, { x: 11.5, z: 158, r: 1.4, down: 0 },
+];
+export function softAt(x: number, z: number) {
+  if (z < 145 || z > 168) return null;
+  for (const s of SOFT) if (s.down < 1 && Math.hypot(x - s.x, z - s.z) < s.r) return s;
+  return null;
+}
 
 export interface Slot { ax: number; az: number; bx: number; bz: number; gap: number; rot: number }
 function between(a: Hummock, b: Hummock): Slot {
@@ -98,7 +108,7 @@ export function mireAt(x: number, z: number): 0 | 1 | 2 {
   if (edge(x, z) > 0.2) return 0;
   if (z > 175.6 && x < 17.3) return 0;
   for (const m of HUMMOCKS) if (Math.hypot(x - m.x, z - m.z) < m.r) return 0;
-  if (onPlank(x, z)) return 0;
+  if (onPlank(x, z) || softAt(x, z)) return 0;
   return x > 17.5 ? 2 : 1;
 }
 
@@ -136,6 +146,8 @@ export function groundY(x: number, z: number) {
   if (z > 128 && z < 203) {
     if (h < MUD_Y) h = MUD_Y;
     if (onPlank(x, z)) h = Math.max(h, 0.34);
+    const s = softAt(x, z);
+    if (s) h = Math.max(h, 0.08 - s.down * 0.4);   // low enough to step onto from the mire
   }
   return h;
 }

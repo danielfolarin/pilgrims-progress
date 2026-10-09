@@ -12,6 +12,7 @@ import { CAST } from '../content/cast';
 import { N, type Note } from '../content/lines';
 import { Voice } from './voice';
 import { TouchControls } from '../core/touch';
+import { Confetti } from '../core/confetti';
 
 // The games page one folder up, when this game is served from a folder of a bigger site
 // (games.thecuriousseekers.com/pilgrims-progress/). Opened from a file or on its own
@@ -37,6 +38,7 @@ export class Game {
   ui: UI;
   audio = new AudioSys();
   voice = new Voice(this.audio);
+  fx = new Confetti();
   settings: Settings = loadSettings();
   state: GameState = freshState();
   colliders: Collider[] = [];
@@ -158,6 +160,7 @@ export class Game {
     this.shake = 0;
     this.ui.reset();
     this.voice.stop();
+    this.fx.clear();
     this.ui.closeMenu();
     this.state = JSON.parse(JSON.stringify(s));
     this.mode = 'play';
@@ -380,6 +383,7 @@ export class Game {
       for (const n of this.npcs.values()) n.update(dt);
     }
     this.world.update(dt);
+    this.fx.update(dt);
     if (this.mode === 'play') this.player.updateCamera(dt);
     inp.endFrame();
   }

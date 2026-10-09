@@ -34,6 +34,17 @@ export const N = {
   accuserIntro: ['dream', "A little below the hill, where the road pinched between two rocks, something waited that knew the pilgrim's name."],
   end1: ['dream', 'Then I saw that the road went down from that place to the foot of a hill; and the name of the hill was Difficulty.'],
   end2: ['thought', 'It is a long way. You find you are not afraid of its being long.'],
+  evWarn: ['evangelist', "One thing more. Between here and the light there is bad ground — the Slough. People go into it believing they're the only one who ever has. They are not. Shout, if you sink."],
+  chaseBell: ['thought', 'Behind you the Tally bell begins to toll. Someone has seen you go.'],
+  chaseClear: ['thought', 'The milestone. Behind you the shouting has run out of breath.'],
+  softGives: ['thought', 'The tussock gives under you. Not everything green will hold.'],
+  vaneMark1: ['vane', 'One. Chalked.'],
+  vaneMark2: ['vane', 'Two. You are rising.'],
+  vaneMark3: ['vane', 'Three. Do not stop now. Nobody stops.'],
+  mark1: ['thought', 'A stroke of chalk beside your name. You feel it, for about a breath.'],
+  mark2: ['thought', 'Two. The straps bite deeper. Strange: the more the board says you are worth, the more there is to carry.'],
+  mark3: ['thought', 'Three, and your name has climbed a line. Your back has noticed the three. It has not noticed the line.'],
+  loadHeavy: ['thought', 'The crate is not the heavy part.'],
 } satisfies Record<string, Note>;
 
 /** Said when a board is too short for a gap: one line per board (short, middling, long). */

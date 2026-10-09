@@ -57,9 +57,10 @@ auto-follow, camera shake off, look sensitivity and inversion, volumes, shadows 
 
 1. **The City of Destruction** — Christiana, Hester the baker, Pip the runner, Reckoner Vane and his
    Tally, Obstinate and Pliable, and Evangelist in the stubble field. One optional thread (a lost
-   debt slip) with three different outcomes.
-2. **The plain and the Slough of Despond** — Pliable turns back; wade tussock to tussock; the far
-   bank cannot be climbed alone.
+   debt slip) with three different outcomes, and the porter's pile: carry loads for chalk marks,
+   and feel each one added to your back. Then a chase out across the stubble field.
+2. **The plain and the Slough of Despond** — Pliable turns back; wade tussock to tussock, some of
+   them rotten; the far bank cannot be climbed alone.
 3. **Help** — accept his hand; then lay three boards of different lengths across three gaps to
    reach another traveller in the deep mire (the environmental puzzle).
 4. **The fork** — Mr Worldly Wiseman's road to Morality (an optional, costly detour), then the

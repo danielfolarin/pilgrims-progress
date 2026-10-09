@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Game } from '../game/game';
 import { softTex } from '../game/characters';
 import { lerp, rng, segDist, smooth, damp } from '../core/util';
-import { buildTerrain, height, edge, corr, mireAt, HUMMOCKS, SLOTS, PLANK_LEN, MUD_Y, laid } from './terrain';
+import { buildTerrain, height, edge, corr, mireAt, HUMMOCKS, SLOTS, SOFT, PLANK_LEN, MUD_Y, laid } from './terrain';
 
 // PLACEHOLDER ART: the whole landscape is generated here from boxes, cones
 // and icosahedra with flat shading and vertex colours. No authored models.
@@ -116,7 +116,8 @@ export class World {
   looseBurden = new THREE.Group();
   farHills = new THREE.Group();
   farMat = new THREE.MeshBasicMaterial({ color: 0x8fa9c6, fog: false });
-  chalk!: THREE.Mesh;
+  chalks: THREE.Mesh[] = [];
+  softTops: THREE.Mesh[] = [];
   tombLight = new THREE.PointLight(0xffe2a8, 0, 22, 1.6);
   gateLight = new THREE.PointLight(0xffd08a, 70, 34, 1.7);
   sinaiLight = new THREE.PointLight(0xff5a2a, 0, 60, 1.4);
@@ -231,12 +232,20 @@ export class World {
       for (let k = 0; k < n; k++) b.box(0xe8e4d8, -5.3 + k * 0.17, y + 3.2 - r * 0.28, -21.12, 0.035, 0.17, 0.02, 0, 0, 0.12);
     }
     this.col({ k: 'b', x: -4.5, z: -21.2, hw: 1.9, hd: 0.25, rot: 0 });
-    // the mark Vane may chalk beside the pilgrim's name
-    this.chalk = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-    this.chalk.scale.set(0.04, 0.17, 0.02);
-    this.chalk.position.set(-4.96, y + 3.2 - 7 * 0.28, -21.11);
-    this.chalk.visible = false;
-    this.g.scene.add(this.chalk);
+    // strokes chalked beside the pilgrim's name: one for the slip, one for each load carried
+    for (let k = 0; k < 4; k++) {
+      const m = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      m.scale.set(0.04, 0.17, 0.02);
+      m.rotation.z = 0.12;
+      m.position.set(-4.96 + k * 0.17, y + 3.2 - 7 * 0.28, -21.11);
+      m.visible = false;
+      this.chalks.push(m);
+      this.g.scene.add(m);
+    }
+    // where loads are set down, by the Tally-House steps
+    y = height(6.4, -23.8);
+    b.box(0x6a5238, 6.4, y + 0.3, -23.8, 0.7, 0.6, 0.6, 0.2).box(0x5e4830, 7.2, y + 0.3, -23.5, 0.7, 0.6, 0.6, -0.3).box(0x6a5238, 6.8, y + 0.9, -23.7, 0.65, 0.55, 0.55, 0.5);
+    this.col({ k: 'c', x: 6.8, z: -23.7, r: 0.9 });
 
     // ring houses, facing the square
     const walls = [0x6a5e52, 0x74685a, 0x5e564e, 0x7a6f60, 0x665a50], roofs = [0x4a3b36, 0x3e3a40, 0x553a30, 0x44403a];
@@ -363,6 +372,16 @@ export class World {
       this.col({ k: 'c', x, z, r: 0.35 });
     }
     this.bake(b, gl);
+    // rotten tussocks: a shade yellower than the sound ones, for anyone looking closely
+    for (const sp of SOFT) {
+      const m = new THREE.Mesh(ICO0, new THREE.MeshStandardMaterial({ color: 0x66682e, flatShading: true, roughness: 1 }));
+      m.scale.set(sp.r * 1.08, 0.36, sp.r * 1.08);
+      m.position.set(sp.x, -0.22, sp.z);
+      m.rotation.y = sp.x;
+      m.receiveShadow = true;
+      this.softTops.push(m);
+      this.g.scene.add(m);
+    }
     // The bank facing the main crossing can't be climbed with a burden on:
     // someone has to reach down.
     this.col({ k: 'b', x: 0, z: 175.3, hw: 21.5, hd: 0.25, rot: 0 });
@@ -540,7 +559,7 @@ export class World {
     const reeds: Inst[] = [];
     for (let i = 0; i < 900; i++) {
       const x = -22 + R() * 72, z = 131 + R() * 71;
-      if (!mireAt(x, z) || HUMMOCKS.some((h) => Math.hypot(x - h.x, z - h.z) < h.r + 0.5)) continue;
+      if (!mireAt(x, z) || [...HUMMOCKS, ...SOFT].some((h) => Math.hypot(x - h.x, z - h.z) < h.r + 0.5)) continue;
       if (SLOTS.some((s) => segDist(x, z, s.ax, s.az, s.bx, s.bz).d < 1.4)) continue;
       if (Math.hypot(x - 38.7, z - 185.3) < 2 || (z > 174 && z < 177 && x < 17)) continue;
       reeds.push({ x, y: MUD_Y - 0.05, z, s: 0.8 + R() * 0.7, ry: R() * 6.28 });
@@ -726,6 +745,7 @@ export class World {
 
     this.farHills.visible = z > 432;
     this.farMat.color.copy(c.hor).lerp(c.top, 0.55);
+    SOFT.forEach((sp, k) => { this.softTops[k].position.y = -0.22 - sp.down * 0.7; });
     (this.hillFlowers.material as THREE.MeshBasicMaterial).opacity = g.dawn;
     this.hillFlowers.visible = g.dawn > 0.01;
     this.tombLight.intensity = g.dawn * 40;

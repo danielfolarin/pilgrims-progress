@@ -6,12 +6,12 @@ import { NEW_ROBE, OLD_ROBE } from './characters';
 import { play, say, Script } from './dialogue';
 import { CAST } from '../content/cast';
 import { damp, segDist, smooth } from '../core/util';
-import { detour, groundY, height, mireAt, onPlank, JOSS_SPOT, SLOTS, PLANK_NAME, plankFits, laid, MUD_Y } from '../world/terrain';
+import { detour, groundY, height, mireAt, onPlank, JOSS_SPOT, SLOTS, SOFT, PLANK_NAME, plankFits, laid, MUD_Y } from '../world/terrain';
 import { COVER, TOWER } from '../world/world';
-import { N, TOO_SHORT } from '../content/lines';
-import { AMBIENT, CHRISTIANA, EVANGELIST, HESTER, INTRO, PIP, SLIP_HTML, VANE, WELL, tallyHtml } from '../content/city';
-import { BANK, DETOUR, HELP_AFTER, JOSS, JOSS_AFTER, JOSS_BARKS, LANDING, LEAVE, PLIABLE_BARKS, PLIABLE_FALLS, RESCUED, SIGN_HTML, SUNK, WHISPERS, WISEMAN } from '../content/road';
-import { ACCUSER_PASSED, CARRIER, CROSS_AFTER, CROSS_ARRIVE, CROSS_FALL_1, CROSS_FALL_2, GARDEN_REST, GOODWILL, GOODWILL_AFTER, INTERPRETER_HTML, KNOCK, PRAYER, TOMB, WAY_LINES, accuserScript } from '../content/hill';
+import { N, TOO_SHORT, type Note } from '../content/lines';
+import { AMBIENT, CHRISTIANA, EVANGELIST, HESTER, INTRO, PIP, PORTER, SLIP_HTML, VANE, WELL, tallyHtml } from '../content/city';
+import { BANK, CHASE_BARKS, DETOUR, GRAB_BARKS, HELP_AFTER, HELP_BUSY, HELP_WALK, JOSS, JOSS_AFTER, JOSS_BARKS, LANDING, LEAVE, PLIABLE_BARKS, PLIABLE_FALLS, RESCUED, SIGN_HTML, SUNK, WHISPERS, WISEMAN } from '../content/road';
+import { ACCUSER_PASSED, CARRIER, CROSS_AFTER, CROSS_ARRIVE, CROSS_FALL_1, CROSS_FALL_2, GARDEN_REST, GOODWILL, GOODWILL_AFTER, GOODWILL_ASK, GOODWILL_WALK, INTERPRETER_HTML, KNOCK, PRAYER, TOMB, WAY_LINES, accuserScript } from '../content/hill';
 
 const ROLL_PATH = [[1.0, 409.4], [7.5, 414.2], [14.5, 419.6], [19.6, 421], [21.2, 421]];
 
@@ -25,7 +25,9 @@ export class Story {
   private hintT = 0;
   private sunkN = 0;
   private cycle: Record<string, number> = {};
-  arrow = { phase: 'idle', t: 2.5, tx: 0, tz: 0, from: new THREE.Vector3(), to: new THREE.Vector3(), n: 0, hits: 0 };
+  arrow = { phase: 'idle', t: 2.5, tx: 0, tz: 0, from: new THREE.Vector3(), to: new THREE.Vector3(), n: 0, hits: 0, second: false };
+  /** The run out of the city: how often the pilgrim has been caught, and how long the pursuers hang back. */
+  chase: { grabs: number; cool: number; barkT: number; barkI: number } | null = null;
   private roll: { t: number; dur: number; done: () => void } | null = null;
   private dawning = false;
   private shadeT = 0;
@@ -65,20 +67,24 @@ export class Story {
     talk('vane', () => play(g, VANE));
     talk('obstinate', () => play(g, WELL));
     talk('pliable', async () => { if (this.st === Stage.Plain) await lines('pliable', PLIABLE_BARKS)(); else await play(g, WELL); });
-    for (const id of ['porter', 'chalker', 'oldman']) talk(id, lines(id, AMBIENT[id]));
+    talk('porter', () => play(g, PORTER));
+    for (const id of ['chalker', 'oldman']) talk(id, lines(id, AMBIENT[id]));
     talk('evangelist', async () => {
       const first = !this.f.metEvangelist;
       await play(g, EVANGELIST);
       g.cine = null;
-      if (first && this.f.metEvangelist) this.setStage(Stage.Leave, 'The stubble field');
+      if (first && this.f.metEvangelist) {
+        this.setStage(Stage.Leave, 'The stubble field');
+        this.walkTalk([N.evWarn], 1.2);   // called after the pilgrim as they go
+      }
     });
     talk('help', async () => {
-      if (this.st === Stage.Rescue) { await say(g, N.helpBusy[0], N.helpBusy[1]); g.ui.closeDialogue(); }
+      if (this.st === Stage.Rescue) await play(g, HELP_BUSY);
       else await lines('help', HELP_AFTER)();
     });
     talk('joss', async () => { if (this.st === Stage.Rescue) await this.rescueScene(); else await lines('joss', JOSS_AFTER)(); });
     talk('wiseman', () => play(g, WISEMAN));
-    talk('goodwill', lines('goodwill', GOODWILL_AFTER));
+    talk('goodwill', async () => { if ((this.f.askedGoodwill || 0) >= 3) await lines('goodwill', GOODWILL_AFTER)(); else await play(g, GOODWILL_ASK); });
     talk('shining1', lines('shining1', [N.shining1Idle[1]]));
     talk('shining2', lines('shining2', [N.shining2Idle[1]]));
     talk('shining3', () => this.tombScene());
@@ -121,6 +127,14 @@ export class Story {
       p.ch.sit = false;
     }));
 
+    // the city's one way up: carry loads from the porter's pile to the Tally-House for chalk
+    add(at(-11.3, -5.3), 2.6, () => (this.st <= Stage.Leave && this.f.porterTalked && !p.crate && (this.f.loads || 0) < 3 && !this.chase ? 'Shoulder a load' : null), () => {
+      p.crate = true;
+      g.audio.footstep('wood', true);
+      if (this.once('loadHeavy')) g.note(N.loadHeavy);
+    });
+    add(at(5.0, -23.0), 3.0, () => (p.crate ? 'Set the load down' : null), () => this.deliver());
+
     // the three boards and the three gaps
     for (let i = 0; i < 3; i++) {
       add(() => (g.state.planks[i] === -1 ? [g.state.plankPos[i][0], g.state.plankPos[i][1]] : null), 2.3,
@@ -155,6 +169,74 @@ export class Story {
     });
   }
 
+  /** A load set down at the Tally-House: one more stroke of chalk, one more weight on the back. */
+  private deliver() {
+    const g = this.g, p = g.player, f = this.f;
+    p.crate = false;
+    f.loads = Math.min(3, (f.loads || 0) + 1);
+    g.audio.thud();
+    this.applyWork();
+    g.fx.burst('chalk', 0.5, 0.42);
+    g.note((N as any)['vaneMark' + f.loads]);
+    this.later(g.wait(3.4), () => g.note((N as any)['mark' + f.loads], 9));
+  }
+
+  /** What has been earned is carried: slower, more bent, a bigger pack, until the Cross. */
+  private applyWork() {
+    const g = this.g, p = g.player, f = this.f, n = f.loads || 0;
+    p.workMul = 1 - 0.065 * n;
+    p.ch.burden.scale.setScalar(1 + 0.1 * n);
+    const strokes = n + (f.slip === 'vane' ? 1 : 0);
+    g.world.chalks.forEach((m, k) => (m.visible = k < strokes));
+  }
+
+  /** Lines spoken in passing while the player keeps moving (not a conversation). */
+  private async walkTalk(list: readonly Note[] | readonly (readonly [string, string])[], delay: number) {
+    const g = this.g, ep = g.epoch, st = this.st;
+    await g.wait(delay);
+    for (const l of list) {
+      for (let k = 0; k < 60 && g.busy; k++) await g.wait(0.5);
+      if (ep !== g.epoch || this.st !== st) return;
+      g.note([l[0], l[1]]);
+      await g.wait(Math.max(2.6, l[1].length * 0.062 + 1.2));
+    }
+  }
+
+  private startChase() {
+    const g = this.g, p = g.player, ob = this.N('obstinate'), pl = this.N('pliable');
+    p.crate = false;
+    this.chase = { grabs: 0, cool: 2.4, barkT: 6.5, barkI: 0 };
+    ob.place(p.x - 1.5, p.z - 19, 0);
+    pl.place(p.x + 1.5, p.z - 21, 0);
+    g.audio.bell();
+    g.note(N.chaseBell);
+    this.later(g.wait(2.2), () => { if (this.chase) g.note(N.oiStop); });
+    g.ui.hint(`They are faster than you. ${g.input.touchMode ? '<b>Hurry</b>' : 'Hurry (<b>Shift</b>)'} in bursts, and keep going if they catch you. Make for the milestone.`, 10);
+  }
+
+  private updateChase(dt: number) {
+    const g = this.g, p = g.player, c = this.chase!, ob = this.N('obstinate'), pl = this.N('pliable');
+    c.cool -= dt;
+    const running = c.cool <= 0;
+    ob.chase = running ? 3.7 : 0;
+    pl.chase = running ? 3.3 : 0;
+    if (running) {
+      c.barkT -= dt;
+      if (c.barkT <= 0 && c.barkI < CHASE_BARKS.length) { c.barkT = 5.5; g.note(CHASE_BARKS[c.barkI++]); }
+      if (Math.hypot(ob.x - p.x, ob.z - p.z) < 1.3 && p.stagger <= 0) {
+        c.grabs++;
+        this.f.chaseGrabs = c.grabs;
+        c.cool = 3.6;
+        p.stagger = 1.0;
+        p.vx = 0; p.vz = -4.8;      // hauled back toward the city
+        g.shake = 0.6;
+        g.audio.thud();
+        g.note(GRAB_BARKS[c.grabs - 1]);
+      }
+    }
+    if (p.z > 103 || c.grabs >= 3) g.run(() => this.leaveScene());
+  }
+
   dropPlank() {
     const g = this.g, p = g.player;
     if (p.carrying < 0) return;
@@ -175,14 +257,16 @@ export class Story {
     const o = (main: string, small = '') => main + (small ? `<small>${small}</small>` : '');
     switch (this.st) {
       case Stage.City: {
-        const side = f.slipFound && !f.slip ? "You are carrying Hester's debt slip. Pip, Hester and Vane each have a claim on it."
-          : f.pipAsked && !f.slipFound ? "Pip's lost slip: by the cart behind the bakery." : '';
+        const side = p.crate ? 'Carry the load to the Tally-House steps.'
+          : f.slipFound && !f.slip ? "You are carrying Hester's debt slip. Pip, Hester and Vane each have a claim on it."
+          : f.pipAsked && !f.slipFound ? "Pip's lost slip: by the cart behind the bakery."
+          : f.porterTalked && (f.loads || 0) < 3 ? "The porter's pile: a stroke of chalk for every load carried to the Tally-House." : '';
         if (!f.knowsStranger) return o('Someone in this city must know what to do with a weight like this. Ask around.', side || 'Christiana is at your door.');
         return o('Find the stranger in the stubble field, out through the Field Gate.', side || 'The gate is north of the square, past the well.');
       }
-      case Stage.Leave: return o('Follow the light across the plain.', f.christianaParting ? '' : 'Say your goodbyes first, if you mean to.');
+      case Stage.Leave: return this.chase ? o('Run for the milestone. Do not let them drag you back.') : o('Follow the light across the plain.', f.christianaParting ? '' : 'Say your goodbyes first, if you mean to.');
       case Stage.Plain: return o('Cross the plain toward the light.', 'Pliable is walking with you.');
-      case Stage.Slough: return o('Cross the Slough of Despond.', 'The tussocks will hold you. The mire will not, for long.');
+      case Stage.Slough: return o('Cross the Slough of Despond.', 'Sound tussocks will hold you. The mire will not, for long.');
       case Stage.Rescue: return o('Lay boards across the three gaps to reach the traveller in the deep mire.', p.carrying >= 0 ? `You are carrying the ${PLANK_NAME[p.carrying]} board.` : 'One board at a time. They are not all the same length.');
       case Stage.Road: return f.wiseman === 'followed' && !f.detourDone ? o('Take the west road to the village of Morality.') : o('Follow the road north, toward the light.');
       case Stage.Gate: return o('Reach the Wicket Gate, and knock.', 'Arrows fall where the red ring shows. Keep moving, or keep a stone between you and the tower.');
@@ -205,6 +289,9 @@ export class Story {
     p.ch.sit = false;
     p.ch.armLT = p.ch.armRT = null;
     p.weightMul = 1;
+    p.crate = false;
+    this.chase = null;
+    for (const sp of SOFT) sp.down = 0;
     p.carrying = g.state.planks.indexOf(-2);
     p.ranFor = 0; p.leaps = 0;
     g.dawn = st >= Stage.Free ? 1 : 0;
@@ -215,13 +302,13 @@ export class Story {
     this.dawning = false;
     this.moodHold = 0;
     this.hintT = 0;
-    this.arrow.phase = 'idle'; this.arrow.t = 2.5; this.arrow.hits = 0;
+    this.arrow.phase = 'idle'; this.arrow.t = 2.5; this.arrow.hits = 0; this.arrow.second = false;
     w.ring.visible = w.arrow.visible = false;
     w.stuck.forEach((s) => (s.visible = false));
     w.looseBurden.visible = false;
     w.syncPlanks();
     w.slip.visible = !f.slipFound;
-    w.chalk.visible = f.slip === 'vane';
+    this.applyWork();
     w.rope.visible = st === Stage.Rescue;
     w.beacon.visible = (!!f.metEvangelist || !!f.sawLight) && st <= Stage.Gate;
     w.shadowWall.visible = st === Stage.Accused;
@@ -234,7 +321,7 @@ export class Story {
     N('vane').place(-1.6, -20.6, 0.3);
     if (f.slip === 'hester') N('pip').place(10.9, -3.9, W); else if (f.slip) N('pip').place(-0.2, -22.4, 0.6); else N('pip').place(-2.6, 3.6, 2.4);
     N('pip').ch.sit = !f.slip;
-    N('porter').place(-9, -3.2, 1.2);
+    N('porter').place(-8.6, -1.9, 2.4);
     N('chalker').place(9.2, 15.2, 3.6);
     N('oldman').place(-6.4, 31, E).ch.sit = true;
     const ob = N('obstinate'), pl = N('pliable');
@@ -328,6 +415,12 @@ export class Story {
     ui.setObjective(this.objective());
 
     if (p.sink >= 1) { this.sunk(); return; }
+    for (const sp of SOFT) {
+      if (sp.down >= 1 || !p.grounded || Math.hypot(p.x - sp.x, p.z - sp.z) > sp.r) continue;
+      sp.down = Math.min(1, sp.down + dt / 1.6);
+      if (sp.down > 0.45 && this.once('soft')) g.note(N.softGives);
+      if (sp.down >= 1) g.audio.splash();
+    }
 
     switch (st) {
       case Stage.City:
@@ -342,7 +435,10 @@ export class Story {
           }
         }
         if (st === Stage.City && p.z > 52 && this.once('field')) g.note(N.field);
-        if (st === Stage.Leave && p.z > 74) g.run(() => this.leaveScene());
+        if (st === Stage.Leave && !f.chaseDone) {
+          if (!this.chase && p.z > 66) this.startChase();
+          if (this.chase) this.updateChase(dt);
+        }
         break;
       }
       case Stage.Plain: {
@@ -400,7 +496,7 @@ export class Story {
         break;
       }
       case Stage.Free: {
-        if (p.leaps >= 3 && this.once('leaps')) g.note(N.leaps);
+        if (p.leaps >= 3 && this.once('leaps')) { g.note(N.leaps); g.fx.burst('joy', 0.5, 0.5); g.audio.chime(); }
         if (p.z > 440 && !f.sawTomb && this.once('skiptomb')) g.note(N.skipTomb);
         if (p.z > 464) g.run(() => this.accuserScene());
         break;
@@ -445,7 +541,8 @@ export class Story {
     const g = this.g, z = g.player.z, st = this.st, a = g.audio;
     if (g.time < this.moodHold) return;
     let m = 'city';
-    if (st >= Stage.Free) m = g.shade > 0.25 ? 'shade' : 'free';
+    if (this.chase) m = 'danger';
+    else if (st >= Stage.Free) m = g.shade > 0.25 ? 'shade' : 'free';
     else if (st === Stage.Way) m = z < 336 ? 'gate' : 'way';
     else if (st === Stage.Gate) m = z > 266 && z < 300 ? 'danger' : 'gate';
     else if (g.fire > 0.2) m = 'sinai';
@@ -493,7 +590,7 @@ export class Story {
       g.audio.creak();
       if (this.once('arrowhint')) {
         g.ui.caption('sound', '[A bowstring creaks in the tower.]');
-        g.ui.hint('Arrows land on the <b>red ring</b>. Step out of it — or keep one of the standing stones between you and the tower.', 10);
+        g.ui.hint('Arrows land on the <b>red ring</b>, and they come in pairs. Step out of it — or keep a standing stone between you and the tower.', 11);
       }
     } else if (a.phase === 'aim') {
       a.t -= dt;
@@ -512,14 +609,13 @@ export class Story {
       if (a.t < 1) return;
       w.arrow.visible = false;
       w.ring.visible = false;
-      a.phase = 'idle'; a.t = assist ? 3.2 : 1.6;
       const hit = Math.hypot(p.x - a.tx, p.z - a.tz) < 1.0 && !this.covered(p.x, p.z) && p.grounded;
       if (hit) {
         a.hits++;
         g.audio.thud();
-        g.shake = 0.8;
-        p.stagger = 1.1;
-        p.vx = -1.5; p.vz = -5.5;
+        g.shake = 0.9;
+        p.stagger = 1.25;
+        p.vx = -1.5; p.vz = -8.5;    // knocked back down the field
         if (this.once('arrowhit')) g.note(N.arrowBurden); else g.ui.caption('sound', '[An arrow strikes your pack and spins you round.]');
         if (a.hits === 3) g.note(N.gateVoice);
       } else {
@@ -529,6 +625,18 @@ export class Story {
         s.position.copy(a.to).y += 0.35;
         s.rotation.set(0.5, Math.random() * 6, 0.25);
         if (this.covered(p.x, p.z) && this.once('covered')) g.ui.caption('sound', '[The arrow shatters on the stone in front of you.]');
+      }
+      // The archer looses in pairs: the second arrow comes for wherever the first one drove you.
+      if (!hit && !assist && !a.second && inField) {
+        a.second = true;
+        a.tx = p.x + p.vx * 0.55; a.tz = Math.min(298.6, p.z + p.vz * 0.55);
+        a.phase = 'aim'; a.t = 0.6;
+        w.ring.position.set(a.tx, groundY(a.tx, a.tz) + 0.06, a.tz);
+        w.ring.visible = true;
+        g.audio.creak();
+      } else {
+        a.second = false;
+        a.phase = 'idle'; a.t = assist ? 3.2 : 1.4;
       }
     }
   }
@@ -565,13 +673,14 @@ export class Story {
 
   private async leaveScene() {
     const g = this.g, p = g.player, ob = this.N('obstinate'), pl = this.N('pliable');
-    ob.place(p.x - 1, p.z - 17, 0);
-    pl.place(p.x + 1.4, p.z - 18, 0);
-    g.note(N.oiStop);
+    this.chase = null;
+    ob.chase = pl.chase = 0;
+    this.f.chaseDone = true;
     g.cineTo(p.x + 4.5, p.y + 2.4, p.z + 5, p.x, p.y + 1.2, p.z - 3, 1.6);
     p.face(p.x, p.z - 10);
-    await Promise.all([ob.walkTo(p.x - 1.1, p.z - 2.5, 4.6), pl.walkTo(p.x + 1.3, p.z - 2.8, 4.6)]);
+    await Promise.all([ob.walkTo(p.x - 1.1, p.z - 2.5, 4.2), pl.walkTo(p.x + 1.3, p.z - 2.8, 4.2)]);
     ob.face(p.x, p.z); pl.face(p.x, p.z);
+    if ((this.f.chaseGrabs || 0) < 3) await say(g, N.chaseClear[0], N.chaseClear[1]);
     await play(g, LEAVE);
     g.cine = null;
     this.setStage(Stage.Plain, 'The plain');
@@ -596,7 +705,7 @@ export class Story {
     pl.place(p.x + 1.4, 131, Math.PI);
     this.later(pl.walkTo(0, 108, 3.2), () => pl.place(4.9, 2.6, -1.9));
     this.whisperT = 7;
-    g.ui.hint('The tussocks are sound ground. In the mire you <b>sink</b> — rest on a tussock before it takes you.', 11);
+    g.ui.hint('In the mire you <b>sink</b>: rest on a tussock before it takes you. Some tussocks are rotten — they hold a moment, then give.', 12);
   }
 
   helpArrives() {
@@ -629,7 +738,8 @@ export class Story {
     g.cine = null;
     p.snapCamera();
     this.setStage(Stage.Rescue, 'Sound ground');
-    this.barkT = 10;
+    this.barkT = 34;
+    this.walkTalk(HELP_WALK, 5);
     g.ui.hint((g.input.touchMode ? 'Tap the prompt to lift a board, lay it across a gap, or take it up again.' : '<b>E</b> lifts a board, lays it across a gap, or takes it up again.') + ' Three boards, three gaps — the lengths matter.', 12);
   }
 
@@ -649,6 +759,7 @@ export class Story {
     g.cineTo(11.6, height(8, 191) + 2.0, 194.6, 7.2, height(8, 191) + 0.9, 191.2, 50);
     await g.wait(0.9);
     await g.ui.fade(false, 0.7);
+    g.fx.burst('welcome', 0.5, 0.4);
     await play(g, RESCUED);
     help.ch.sit = false;
     g.cine = null;
@@ -704,10 +815,13 @@ export class Story {
     g.cineTo(-3.6, p.y + 1.9, 302.4, 1.2, p.y + 1.25, 306.6, 50);
     await g.ui.fade(false, 0.6);
     g.ui.caption('sound', '[An arrow thuds into the gate as it shuts behind you.]');
+    g.fx.burst('welcome', 0.5, 0.3);
+    g.audio.chime();
     await play(g, GOODWILL);
     g.cine = null;
     p.snapCamera();
     this.setStage(Stage.Way, 'Inside the Gate');
+    this.walkTalk(GOODWILL_WALK, 2.5);
   }
 
   private updateRoll(dt: number) {
@@ -723,7 +837,7 @@ export class Story {
     b.position.set(x, height(x, z) + 0.45 + drop * 0.9 + Math.abs(Math.sin(r.t * 30)) * 0.12 * (1 - into), z);
     b.rotation.x += dt * (2 + r.t * 9);
     b.rotation.z += dt * 1.3;
-    b.scale.setScalar(1 - into * 0.85);
+    b.scale.setScalar((1 + 0.1 * (this.f.loads || 0)) * (1 - into * 0.85));
     if (this.g.cine) this.g.cine.look.copy(b.position);
     if (Math.random() < dt * 5) this.g.audio.footstep('dirt', true);
     if (r.t >= 1) { b.visible = false; this.roll = null; r.done(); }
@@ -745,6 +859,7 @@ export class Story {
     g.ui.caption('sound', '[The straps part.]');
     p.burden = 'none';
     p.ch.setBurden('none');
+    p.workMul = 1;
     w.looseBurden.visible = true;
     w.looseBurden.scale.setScalar(1);
     const rolled = new Promise<void>((done) => (this.roll = { t: 0, dur: 9, done }));
@@ -764,6 +879,7 @@ export class Story {
     this.dawning = true;
     g.audio.setMood('cross');
     g.audio.bell();
+    g.fx.burst('joy', 0.5, 0.3);
     g.cineTo(p.x + 2.4, hy + 1.5, p.z + 4.6, p.x, p.y + 1.45, p.z, 0.9);
     p.ch.armLT = p.ch.armRT = -0.5;
     await g.wait(2.4);
@@ -793,6 +909,7 @@ export class Story {
     const g = this.g;
     g.player.ch.setRobe(NEW_ROBE);
     g.audio.chime();
+    g.fx.burst('joy', 0.5, 0.35);
     g.ui.caption('sound', '[Your rags are gone. The new coat is light, and it fits.]');
   }
 
@@ -865,6 +982,7 @@ export class Story {
     L.push(f.pliableParting === 'bitter' ? (f.letterPliable ? 'You sneered at Pliable, and have written to say so.' : 'Pliable went home with your scorn in his ears.') : 'Pliable went home. You let him go kindly.');
     L.push('Joss is at Help\'s hut, with a twisted ankle and a full plate, a week from the gate.');
     if (f.detourDone) L.push('You know the road to Morality now, and what waits under that hill.');
+    g.fx.burst('joy', 0.5, 0.25);
     g.endMenu(L);
   }
 }

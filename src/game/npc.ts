@@ -9,6 +9,8 @@ export class Npc {
   visible = true;
   /** Walks behind the pilgrim. */
   follow = false;
+  /** Runs straight at the pilgrim at this speed (0 = not chasing). */
+  chase = 0;
   /** No collision (figures in cutscenes, the Accuser). */
   ghost = false;
   /** How far below the ground the figure is drawn (stuck in the mire). */
@@ -26,6 +28,7 @@ export class Npc {
   place(x: number, z: number, yaw = 0) {
     this.x = x; this.z = z; this.yaw = yaw;
     this.walk = null;
+    this.chase = 0;
     return this;
   }
 
@@ -47,6 +50,8 @@ export class Npc {
       const d = Math.hypot(w.x - this.x, w.z - this.z);
       if (d < 0.2 || w.t > 40) { this.walk = null; w.resolve(); }
       else { tx = w.x; tz = w.z; sp = w.speed; }
+    } else if (this.chase > 0) {
+      if (Math.hypot(p.x - this.x, p.z - this.z) > 0.9) { tx = p.x; tz = p.z; sp = this.chase; }
     } else if (this.follow) {
       // half a pace behind and to one side
       const fx = p.x - Math.sin(p.yaw) * 1.5 + Math.cos(p.yaw) * 1.1, fz = p.z - Math.cos(p.yaw) * 1.5 - Math.sin(p.yaw) * 1.1;

@@ -379,12 +379,30 @@ export const WELL: Script = {
   ],
 };
 
-export const AMBIENT: Record<string, string[]> = {
-  porter: [
-    "Mind your back — ha. Sorry. Didn't mean yours.",
-    "Third load before noon. Third mark. Doesn't feel like three.",
-    "My knees say stop. The board says don't. The board's louder.",
+// The porter offers the city's one way up: carry loads, earn chalk. (See Story: each load
+// delivered adds a stroke by the pilgrim's name and weight to the pilgrim's back.)
+export const PORTER: Script = {
+  start: [
+    {
+      when: (f) => (f.loads || 0) >= 3,
+      then: [['porter', "That's the pile shifted. There'll be another tomorrow. There's always another tomorrow."]],
+      else: [{ when: (f) => f.porterTalked, then: [['porter', "Pile's there. Steps are there. Board's watching."]], else: [{ go: 'first' }] }],
+    },
   ],
+  first: [
+    ['porter', "Mind your back — ha. Sorry. Didn't mean yours."],
+    ['porter', "You want marks? There's the pile. Carry a load to the Tally-House steps and the Reckoner chalks you a stroke. I've done it thirty years."],
+    {
+      choice: [
+        { t: 'Thirty years. Has it got lighter?', then: [['porter', "(He laughs until he coughs.) Lighter. No. You get stronger for a while. Then you don't."]] },
+        { t: 'What do the marks buy you?', then: [['porter', "A higher line on the board. And a higher line wants keeping. That's the whole trick of it."]] },
+      ],
+    },
+    { set: { porterTalked: true } },
+  ],
+};
+
+export const AMBIENT: Record<string, string[]> = {
   chalker: [
     "You have to chalk your own step fresh each morning, or they say you've let yourself go.",
     'My neighbour chalks hers twice. Twice! Showing off.',
@@ -448,7 +466,6 @@ export const EVANGELIST: Script = {
   send: [
     ['evangelist', 'Take this. Read it when your back says you were a fool to start.'],
     { run: (g) => g.ui.read('A parchment roll', '<p><i>Come unto me, all ye that labour and are heavy laden, and I will give you rest.</i></p>') },
-    ['evangelist', "One thing more. Between here and the light there is bad ground — the Slough. People go into it believing they're the only one who ever has. They are not. Shout, if you sink."],
     { set: { metEvangelist: true } },
   ],
 };
@@ -462,11 +479,11 @@ export function tallyHtml(f: Flags) {
     ['Hester, baker', f.slip === 'vane' ? '— oven called in —' : '||||| |'],
     ["Joss, baker's man", '— struck off: absent —'],
     ['Pliable', '|||'],
-    ['(your name)', f.slip === 'vane' ? '|||' : '||', true],
+    ['(your name)', '|'.repeat(2 + (f.loads || 0) + (f.slip === 'vane' ? 1 : 0)), true],
     ['Pip, runner', '|'],
   ];
   const body = rows.map(([n, m, mine]) => `<span class="${mine ? 'mine' : ''}">${n.padEnd(22, ' ')}${m}</span>`).join('\n');
-  return `<div class="tally">${body}</div><p><i>Everyone you know, in a column. Your own name is near the bottom, where it has always been.${f.slip === 'vane' ? ' The newest stroke beside it is still white.' : ''}</i></p>`;
+  return `<div class="tally">${body}</div><p><i>Everyone you know, in a column. Your own name is near the bottom, where it has always been.${f.slip === 'vane' || f.loads ? ' The newest chalk beside it is still white.' : ''}</i></p>`;
 }
 
 export const SLIP_HTML =

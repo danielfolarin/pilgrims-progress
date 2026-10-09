@@ -1,6 +1,8 @@
 # The Unburdened Road — development notes
 
-First playable build, 2026-10-08. Recorded voices and touch controls added the same day.
+First playable build, 2026-10-08. Recorded voices and touch controls added the same day, followed by
+a pass to make it play more like a game: work for chalk in the City, a chase out of it, a harder
+Slough and arrow field, shorter conversations, and confetti.
 
 ## 1. Engine, and why
 
@@ -18,8 +20,9 @@ which hurries everywhere and skips reading, covers it in about 6½ minutes of ga
 
 | Beat | Place | What the player does |
 |---|---|---|
-| 1 | City of Destruction | Explore, talk to nine residents, meet Evangelist, part from Christiana |
-| 2 | The plain, the Slough | Pliable joins and turns back; cross the mire tussock to tussock |
+| 1 | City of Destruction | Explore, talk to nine residents, carry loads for chalk marks (optional), meet Evangelist, part from Christiana |
+| 1b | The stubble field | Chased by Obstinate and Pliable; run for the milestone |
+| 2 | The plain, the Slough | Pliable joins and turns back; cross the mire tussock to tussock, some of them rotten |
 | 3 | Help's bank | Accept Help; bridge three gaps with three boards to reach Joss |
 | 4 | The fork, the Wicket Gate | Optional detour toward Morality; cross the arrow field; knock |
 | 5 | The Cross, the sepulchre | The burden falls; three Shining Ones; the empty tomb |
@@ -42,6 +45,10 @@ These come straight from the brief, and each one is a decision in the code rathe
   anywhere in the save. `state.flags` records only what was said and done, so later scenes can
   refer to it. The one scoreboard in the game is the city's own Tally, and the story treats it
   as the lie the pilgrim is leaving.
+- **Earning makes it heavier.** The City's one activity is carrying loads to the Tally-House for
+  chalk. Each load adds a stroke by the pilgrim's name and weight to the pilgrim's back: slower,
+  more bent, a visibly bigger pack. Three loads make the chase and the Slough noticeably harder.
+  All of it falls at the Cross with the rest. Nothing in the game rewards the marks.
 - **Welcome is not conditional.** Every reply at the Wicket Gate opens it. Goodwill says so in
   plain words: the pilgrim is received for Christ's sake, not on approval.
 - **The burden falls without a test.** At the Cross the game takes the controls away, the
@@ -63,6 +70,9 @@ These come straight from the brief, and each one is a decision in the code rathe
   listen, and get up with something to do. Nothing is granted for it.
 - **Force is for the powers, not for people.** No human can be struck. Danger comes from the
   mire, the tower's arrows and the Accuser; none of them can kill, and none is beaten by violence.
+  The chase can only drag the pilgrim back a few steps; after three catches Obstinate lets go.
+- **Confetti is kept for joy.** It falls when the gate opens, when the burden falls, at the three
+  leaps and at the end. A chalk mark gets a grey puff of dust that is gone at once, on purpose.
 
 ## 4. On the four named influences
 
@@ -155,8 +165,14 @@ hurrying until winded, the refused jump, keyboard camera, pause freezing game ti
 single-file production build. Screens were inspected at the city, the Slough, Help's bank, the
 arrow field, the gate garden, the walled way, each shot of the Cross scene, the narrows and the end.
 
-Voices and touch: both routes were re-run after the voice change, and every one of the 246 lines
-they speak has a recording. Clip playback, music ducking, the joystick, drag-to-look, the Hurry
+The game-feel pass: the harsh route now carries three loads (walking pace falls from 2.5 to 2.0
+m/s), is caught three times in the chase and is struck by four arrows; the kind route hurries
+clear of the chase and takes one arrow. Both still finish with every check passing. A rotten
+tussock giving way, Help's optional limp exchange and Goodwill's optional questions are checked.
+How hard the Slough, the chase and the arrows feel to a person is not something these runs can say.
+
+Voices and touch: both routes were re-run after the voice change, and every line they speak
+has a recording (379 in all). Clip playback, music ducking, the joystick, drag-to-look, the Hurry
 button, tapping the prompt, tapping through a conversation and tapping a reply were each driven
 with simulated touches at phone size, in landscape and upright.
 
@@ -208,7 +224,9 @@ soft separate voice; the Dreamer's narration is a British storyteller.
 
 ## 10. Suggested next steps
 
-1. A human play-through, then tune the Slough, the arrows and camera feel from what is found.
+1. A human play-through, then tune the chase, the Slough, the arrows and camera feel from what is
+   found. The numbers to turn are in `src/game/story.ts` (chase speeds, arrow timing) and
+   `src/game/player.ts` (sink times); Settings has an assist mode that already softens them.
 2. Theological and editorial read of `src/content/`, and of section 4 above.
 3. The Interpreter's House as an interactive interior (the brief's "teach through environments").
 4. Hill Difficulty and Palace Beautiful: perseverance, the lost roll, hospitality, friendship.

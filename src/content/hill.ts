@@ -29,49 +29,51 @@ export const GOODWILL: Script = {
     ['goodwill', "There. That tower has a captain in it who can't abide anyone getting this far. He can't stop the gate from opening. So he tries to make you believe it won't."],
     ['you', "You pulled me in before I'd finished asking."],
     ['goodwill', "I am willing with all my heart. That's the whole of my work, and near enough my name. Goodwill."],
-    { go: 'ask' },
+    ['goodwill', "It belongs to the Lord of the hill — Jesus, the Christ. You'll see his hill within the hour. He said: 'I am the door: by me if any man enter in, he shall be saved.'"],
+    ['goodwill', "So you didn't get in by knocking well. You got in because of him."],
+    ['you', "But I've still got this on my back."],
+    ['goodwill', 'Be content to bear it until you come to the place of deliverance. There it will fall from your back of itself.'],
+    ['goodwill', "Only hear me: you are not on trial between here and there. Nobody's let you in on approval. You were received at the door, for his sake. The hill is where you'll see why."],
   ],
+};
+
+/** Called after the pilgrim as they set off through the garden. */
+export const GOODWILL_WALK: [string, string][] = [
+  ['goodwill', "Sit. There's bread on the table, and the well is sweet. Then it's straight up between the two walls; you can't miss it."],
+  ['goodwill', "The Interpreter keeps the house by the road. He's out among the hill-farms today, more's the pity. He'd have shown you things. Another time."],
+];
+
+/** The questions the pilgrim may come back and ask; none of them is needed to go on. */
+export const GOODWILL_ASK: Script = {
+  start: [{ when: (f) => f.askedGoodwill >= 3, then: [{ go: 'idle' }], else: [{ go: 'ask' }] }],
   ask: [
+    ['goodwill', 'Ask, if something is sitting on you. I have all morning.'],
     {
       choice: [
         {
           t: "Don't you need to know what I've done first?",
-          once: true,
+          if: (f) => !f.gwDone,
+          set: { gwDone: true },
           then: [['goodwill', "I'll hear it gladly, if you want to tell it. It won't change which side of the gate you're standing on."]],
-          go: 'ask',
-        },
-        {
-          t: 'Whose gate is this?',
-          once: true,
-          then: [
-            ['goodwill', "It belongs to the Lord of the hill — Jesus, the Christ. You'll see his hill within the hour. He said: 'I am the door: by me if any man enter in, he shall be saved.'"],
-            ['goodwill', "So you didn't get in by knocking well. You got in because of him."],
-          ],
-          go: 'ask',
         },
         {
           t: 'Am I… in? Is that all?',
-          once: true,
+          if: (f) => !f.gwIn,
+          set: { gwIn: true },
           then: [['goodwill', "You're in. You are his now, and this is home ground from here on, whatever the road looks like. That's all, and it's everything."]],
-          go: 'ask',
         },
-        { t: "But I've still got this on my back.", go: 'burden' },
+        {
+          t: "And if I'd come later? Or worse?",
+          if: (f) => !f.gwLater,
+          set: { gwLater: true },
+          then: [['goodwill', 'Same door. Same answer.']],
+        },
+        { t: '(Nothing more.)' },
       ],
     },
+    { run: (g) => { const f = g.state.flags; f.askedGoodwill = (f.gwDone ? 1 : 0) + (f.gwIn ? 1 : 0) + (f.gwLater ? 1 : 0); } },
   ],
-  burden: [
-    ['goodwill', "You have. I can't lift it off, and I'd be lying if I told you how to stop feeling it."],
-    ['goodwill', 'Be content to bear it until you come to the place of deliverance. There it will fall from your back of itself.'],
-    ['goodwill', "Only hear me: you are not on trial between here and there. Nobody's let you in on approval. You were received at the door, for his sake. The hill is where you'll see why."],
-    {
-      choice: [
-        { t: "And if I'd come later? Or worse?", then: [['goodwill', 'Same door. Same answer.']] },
-        { t: 'Thank you.', then: [['goodwill', 'Thank him. Eat something first.']] },
-      ],
-    },
-    ['goodwill', "Sit. There's bread on the table, and the well is sweet. Then it's straight up between the two walls; you can't miss it."],
-    ['goodwill', "The Interpreter keeps the house by the road. He's out among the hill-farms today, more's the pity. He'd have shown you things. Another time."],
-  ],
+  idle: [['goodwill', 'I watch every one of you go up that road. I have never yet got tired of it.']],
 };
 
 export const GOODWILL_AFTER = [

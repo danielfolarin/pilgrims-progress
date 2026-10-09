@@ -22,9 +22,9 @@ const said = (who: string, list: string[], out: Pair[]) => list.forEach((t) => o
 
 export function allLines(): Pair[] {
   const out: Pair[] = [];
-  for (const s of [city.INTRO, city.CHRISTIANA, city.HESTER, city.PIP, city.VANE, city.WELL, city.EVANGELIST,
-    road.LEAVE, road.PLIABLE_FALLS, road.BANK, road.LANDING, road.JOSS, road.RESCUED, road.WISEMAN, road.DETOUR,
-    hill.KNOCK, hill.GOODWILL, hill.GARDEN_REST, hill.CROSS_ARRIVE, hill.CROSS_AFTER, hill.TOMB, hill.ACCUSER_PASSED,
+  for (const s of [city.INTRO, city.CHRISTIANA, city.HESTER, city.PIP, city.VANE, city.WELL, city.EVANGELIST, city.PORTER,
+    road.LEAVE, road.PLIABLE_FALLS, road.BANK, road.LANDING, road.HELP_BUSY, road.JOSS, road.RESCUED, road.WISEMAN, road.DETOUR,
+    hill.KNOCK, hill.GOODWILL, hill.GOODWILL_ASK, hill.GARDEN_REST, hill.CROSS_ARRIVE, hill.CROSS_AFTER, hill.TOMB, hill.ACCUSER_PASSED,
     hill.PRAYER, hill.CARRIER]) script(s, out);
   // the Accuser's charges depend on what the player did: take both ends of each
   script(hill.accuserScript({}), out);
@@ -37,6 +37,7 @@ export function allLines(): Pair[] {
   said('help', road.HELP_AFTER, out);
   said('joss', road.JOSS_AFTER, out);
   said('goodwill', hill.GOODWILL_AFTER, out);
+  for (const list of [road.CHASE_BARKS, road.GRAB_BARKS, road.HELP_WALK, hill.GOODWILL_WALK]) for (const [who, text] of list) out.push([who, text]);
   for (const [, kind, text] of hill.WAY_LINES) out.push([kind, text]);
   out.push(['dream', hill.CROSS_FALL_1], ['dream', hill.CROSS_FALL_2]);
   for (const n of [...Object.values(N), ...TOO_SHORT]) out.push([n[0], n[1]]);

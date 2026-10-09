@@ -49,6 +49,7 @@ export class Character {
   burden = new THREE.Group();
   shadowBurden = new THREE.Group();
   plank = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.07, 1), new THREE.MeshStandardMaterial({ color: 0x8a6a42, flatShading: true, roughness: 1 }));
+  crate = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0x6a5238, flatShading: true, roughness: 1 }));
   private sitK = 0;
   private stride = 0;
 
@@ -190,6 +191,10 @@ export class Character {
     this.plank.rotation.x = 0.12;
     this.plank.visible = false;
     this.body.add(this.plank);
+    this.crate.position.set(0, 0.28, 0.5);
+    this.crate.castShadow = true;
+    this.crate.visible = false;
+    this.body.add(this.crate);
 
     this.root.add(this.legL, this.legR, this.body);
     this.root.scale.setScalar(look.scale || 1);
@@ -201,6 +206,13 @@ export class Character {
   }
 
   setRobe(color: number) { this.robeMat.color.setHex(color); }
+
+  /** A load carried in both arms. */
+  setCrate(on: boolean) {
+    if (this.crate.visible === on) return;
+    this.crate.visible = on;
+    this.armLT = this.armRT = on ? -1.25 : null;
+  }
 
   setCarry(len: number) {
     this.plank.visible = len > 0;

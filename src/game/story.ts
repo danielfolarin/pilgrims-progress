@@ -6,6 +6,7 @@ import { NEW_ROBE, OLD_ROBE } from './characters';
 import { play, say, Script } from './dialogue';
 import { CAST } from '../content/cast';
 import { damp, segDist, smooth } from '../core/util';
+import { track } from '../core/track';
 import { detour, groundY, height, mireAt, onPlank, JOSS_SPOT, SLOTS, SOFT, PLANK_NAME, plankFits, laid, MUD_Y } from '../world/terrain';
 import { COVER, TOWER } from '../world/world';
 import { N, TOO_SHORT, type Note } from '../content/lines';
@@ -371,6 +372,7 @@ export class Story {
 
   setStage(stage: number, label: string, x?: number, z?: number) {
     this.g.state.stage = stage;
+    track('stage-reached', { stage: label });
     this.sync();
     this.g.checkpoint(label, x, z);
   }

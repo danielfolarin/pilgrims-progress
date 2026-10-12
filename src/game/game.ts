@@ -7,6 +7,7 @@ import { Player, Collider } from './player';
 import { Npc } from './npc';
 import { Story } from './story';
 import { GameState, Settings, Stage, freshState, hasSavedSettings, latestSave, loadSettings, readSave, saveSettings, writeSave, Slot } from './state';
+import { track } from '../core/track';
 import { ROLL_ACCUSED, ROLL_PEACE } from '../content/hill';
 import { CAST } from '../content/cast';
 import { N, type Note } from '../content/lines';
@@ -172,6 +173,7 @@ export class Game {
   }
 
   newGame() {
+    track('journey-begun');
     this.loadState(freshState());
     this.story.intro();
   }

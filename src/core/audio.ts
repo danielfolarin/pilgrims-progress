@@ -1,41 +1,155 @@
-// All sound in this build is synthesised at runtime with the Web Audio API:
-// a small generative score (drone + pad chords + plucked line) per mood, and
+// All sound in this build is synthesised at runtime with the Web Audio API: a small
+// band per mood (pad, bass, arpeggio, drums, and a written theme or a free line), and
 // noise/sine based effects. PLACEHOLDER: stands in for a recorded soundtrack.
 
+// A mood is a small band: pad chords (one per bar), an optional bass line, arpeggio and
+// drum kit (16-step patterns), and a lead, either a written theme or a gentle random line.
+// Adventurous moods carry the road; only the Slough, the hill of Legality and the
+// Accuser's narrows are left dark on purpose.
+type Theme = [deg: number, len16ths: number][];
 interface Mood {
-  root: number; scale: number[]; bpm: number; density: number;
-  pluck: number; pad: number; drone: number; wave: OscillatorType; cutoff: number;
-  chords: number[][]; melody?: number[];
+  root: number; scale: number[]; bpm: number;
+  chords: number[][];
+  pad: number; padWave?: 'sine' | 'strings';
+  drone: number; cutoff: number;
+  lead: number; wave: OscillatorType; bright?: number;
+  /** written theme ([degree, length in 16ths], -1 = rest) */
+  theme?: Theme;
+  /** random lead instead: chance per eighth note */
+  density?: number;
+  /** chord tone index per 16th ('0'..'3', '.' = rest) */
+  arp?: { level: number; pat: string; oct?: number };
+  /** 'x' root, 'f' fifth, 'o' octave, '.' rest */
+  bass?: { level: number; pat: string };
+  drums?: { level: number; kick?: string; snare?: string; hat?: string; tom?: string };
 }
 
 const MIN = [0, 2, 3, 5, 7, 8, 10], DOR = [0, 2, 3, 5, 7, 9, 10], MAJ = [0, 2, 4, 5, 7, 9, 11];
-const PHR = [0, 1, 3, 5, 7, 8, 10], PENT = [0, 2, 4, 7, 9];
+const MIX = [0, 2, 4, 5, 7, 9, 10], PHR = [0, 1, 3, 5, 7, 8, 10];
+
+// Original themes.
+const ROAD: Theme = [
+  [4, 4], [4, 2], [5, 2], [7, 6], [4, 2],
+  [6, 4], [5, 2], [4, 2], [1, 8],
+  [2, 4], [4, 2], [5, 2], [7, 4], [9, 4],
+  [8, 6], [7, 2], [5, 4], [-1, 4],
+  [4, 4], [4, 2], [5, 2], [7, 6], [9, 2],
+  [8, 4], [6, 2], [4, 2], [6, 4], [8, 4],
+  [7, 4], [5, 2], [3, 2], [5, 4], [7, 4],
+  [7, 12], [-1, 4],
+];
+const PLAIN: Theme = [
+  [0, 4], [2, 2], [3, 2], [4, 8],
+  [5, 4], [4, 2], [3, 2], [2, 8],
+  [0, 4], [2, 2], [4, 2], [7, 6], [6, 2],
+  [5, 4], [3, 4], [4, 8],
+];
+const FREE: Theme = [
+  [0, 2], [2, 2], [4, 2], [7, 6], [4, 2], [5, 2],
+  [3, 2], [5, 2], [7, 4], [8, 4], [7, 4],
+  [5, 2], [7, 2], [9, 4], [8, 2], [7, 2], [5, 4],
+  [4, 4], [6, 4], [8, 6], [-1, 2],
+  [7, 2], [8, 2], [9, 4], [7, 2], [4, 2], [7, 4],
+  [10, 4], [8, 2], [7, 2], [5, 4], [3, 4],
+  [4, 2], [6, 2], [8, 4], [6, 2], [8, 2], [11, 4],
+  [7, 10], [-1, 6],
+];
+const CHASE: Theme = [
+  [4, 2], [4, 2], [4, 2], [5, 2], [7, 8],
+  [7, 2], [5, 2], [4, 2], [5, 2], [4, 4], [2, 4],
+  [3, 4], [5, 4], [7, 4], [8, 4],
+  [7, 4], [6, 4], [4, 8],
+];
+// The hymn on the hill, unchanged from the first build (written in eighths there).
+const CROSS: Theme = [
+  [0, 4], [2, 4], [4, 4], [7, 4], [5, 4], [4, 2], [5, 2], [7, 8],
+  [9, 4], [7, 4], [5, 4], [7, 2], [9, 2], [8, 4], [6, 4], [4, 8],
+  [4, 4], [5, 4], [7, 4], [9, 4], [10, 4], [9, 2], [7, 2], [5, 8],
+  [8, 4], [6, 4], [4, 2], [6, 2], [8, 4], [7, 16],
+];
 
 const MOODS: Record<string, Mood> = {
-  silence: { root: 50, scale: MIN, bpm: 60, density: 0, pluck: 0, pad: 0, drone: 0, wave: 'sine', cutoff: 400, chords: [[0, 2, 4]] },
-  title: { root: 50, scale: DOR, bpm: 60, density: 0.18, pluck: 0.5, pad: 0.6, drone: 0.4, wave: 'triangle', cutoff: 800, chords: [[0, 2, 4], [3, 5, 7], [6, 8, 10], [0, 2, 4]] },
-  city: { root: 50, scale: MIN, bpm: 66, density: 0.22, pluck: 0.5, pad: 0.4, drone: 0.55, wave: 'triangle', cutoff: 700, chords: [[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]] },
-  plain: { root: 52, scale: DOR, bpm: 76, density: 0.3, pluck: 0.55, pad: 0.4, drone: 0.3, wave: 'triangle', cutoff: 900, chords: [[0, 2, 4], [3, 5, 7], [6, 8, 10], [0, 2, 4]] },
-  slough: { root: 47, scale: PHR, bpm: 50, density: 0.12, pluck: 0.35, pad: 0.5, drone: 0.85, wave: 'sine', cutoff: 420, chords: [[0, 3, 4], [1, 3, 5]] },
-  road: { root: 55, scale: MAJ, bpm: 80, density: 0.34, pluck: 0.55, pad: 0.45, drone: 0.22, wave: 'triangle', cutoff: 1100, chords: [[0, 2, 4], [3, 5, 7], [4, 6, 8], [0, 2, 4]] },
-  sinai: { root: 46, scale: PHR, bpm: 58, density: 0.1, pluck: 0.4, pad: 0.5, drone: 1.1, wave: 'sawtooth', cutoff: 380, chords: [[0, 1, 4], [0, 3, 5]] },
-  danger: { root: 49, scale: MIN, bpm: 116, density: 0.55, pluck: 0.6, pad: 0.4, drone: 0.7, wave: 'square', cutoff: 800, chords: [[0, 2, 4], [5, 7, 9]] },
-  gate: { root: 53, scale: MAJ, bpm: 70, density: 0.28, pluck: 0.5, pad: 0.65, drone: 0.25, wave: 'triangle', cutoff: 1200, chords: [[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]] },
-  way: { root: 50, scale: MAJ, bpm: 62, density: 0.2, pluck: 0.45, pad: 0.7, drone: 0.35, wave: 'triangle', cutoff: 1000, chords: [[0, 2, 4], [3, 5, 7], [0, 2, 4], [4, 6, 8]] },
-  hush: { root: 50, scale: MAJ, bpm: 60, density: 0, pluck: 0, pad: 0.25, drone: 0.2, wave: 'sine', cutoff: 600, chords: [[0, 4, 7]] },
-  // Original eight-bar tune for the hill; scale degrees, -1 = rest.
-  cross: {
-    root: 50, scale: MAJ, bpm: 66, density: 0, pluck: 0.75, pad: 1.0, drone: 0.4, wave: 'triangle', cutoff: 1500,
-    chords: [[0, 2, 4], [3, 5, 7], [5, 7, 9], [4, 6, 8], [0, 2, 4], [3, 5, 7], [4, 6, 8], [0, 2, 4]],
-    melody: [
-      0, -1, 2, -1, 4, -1, 7, -1, 5, -1, 4, 5, 7, -1, -1, -1,
-      9, -1, 7, -1, 5, -1, 7, 9, 8, -1, 6, -1, 4, -1, -1, -1,
-      4, -1, 5, -1, 7, -1, 9, -1, 10, -1, 9, 7, 5, -1, -1, -1,
-      8, -1, 6, -1, 4, 6, 8, -1, 7, -1, -1, -1, -1, -1, -1, -1,
-    ],
+  silence: { root: 50, scale: MAJ, bpm: 60, chords: [[0, 2, 4]], pad: 0, drone: 0, cutoff: 400, lead: 0, wave: 'sine' },
+  // the title: the road theme, quietly, as a promise
+  title: {
+    root: 50, scale: MAJ, bpm: 84, chords: [[0, 2, 4], [4, 6, 8], [5, 7, 9], [3, 5, 7]],
+    pad: 0.85, padWave: 'strings', drone: 0.15, cutoff: 900, lead: 0.7, wave: 'triangle', theme: ROAD,
+    arp: { level: 0.42, pat: '0.1.2.1.0.1.2.1.' },
   },
-  free: { root: 57, scale: PENT, bpm: 98, density: 0.5, pluck: 0.7, pad: 0.5, drone: 0.15, wave: 'triangle', cutoff: 1600, chords: [[0, 2, 4], [3, 5, 7], [2, 4, 6], [0, 2, 4]] },
-  shade: { root: 45, scale: PHR, bpm: 54, density: 0.14, pluck: 0.35, pad: 0.4, drone: 1.1, wave: 'sawtooth', cutoff: 330, chords: [[0, 1, 4]] },
+  // the city: uneasy and busy, minor, with a pulse rather than a dirge
+  city: {
+    root: 50, scale: MIN, bpm: 92, chords: [[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]],
+    pad: 0.45, padWave: 'strings', drone: 0.2, cutoff: 800, lead: 0.4, wave: 'triangle', density: 0.16,
+    arp: { level: 0.32, pat: '0..1..2.0..1..2.' },
+    bass: { level: 0.5, pat: 'x..x..x.x..x..f.' },
+    drums: { level: 0.5, hat: '..x...x...x...x.', tom: 'x.......x.......' },
+  },
+  // out across the stubble: modal, marching, hopeful
+  plain: {
+    root: 52, scale: DOR, bpm: 96, chords: [[0, 2, 4], [3, 5, 7], [0, 2, 4], [6, 8, 10]],
+    pad: 0.5, padWave: 'strings', drone: 0.1, cutoff: 1100, lead: 0.6, wave: 'sawtooth', bright: 1700, theme: PLAIN,
+    arp: { level: 0.3, pat: '0.1.2.1.0.1.2.1.' },
+    bass: { level: 0.55, pat: 'x...x...x...x.f.' },
+    drums: { level: 0.55, kick: 'x.......x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+  },
+  // dark on purpose
+  slough: { root: 47, scale: PHR, bpm: 50, chords: [[0, 3, 4], [1, 3, 5]], pad: 0.5, drone: 0.65, cutoff: 420, lead: 0.35, wave: 'sine', density: 0.12 },
+  // pulled out by Help: warm, unhurried, the worst is over
+  help: {
+    root: 53, scale: MIX, bpm: 80, chords: [[0, 2, 4], [6, 8, 10], [3, 5, 7], [0, 2, 4]],
+    pad: 0.6, padWave: 'strings', drone: 0.1, cutoff: 1000, lead: 0.45, wave: 'triangle', density: 0.22,
+    arp: { level: 0.3, pat: '0.1.2.3.2.1.0...' },
+    bass: { level: 0.4, pat: 'x.......f.......' },
+  },
+  // the open road: the main theme, a full band
+  road: {
+    root: 55, scale: MAJ, bpm: 104, chords: [[0, 2, 4], [4, 6, 8], [5, 7, 9], [3, 5, 7]],
+    pad: 0.5, padWave: 'strings', drone: 0, cutoff: 1400, lead: 0.7, wave: 'sawtooth', bright: 2200, theme: ROAD,
+    arp: { level: 0.32, pat: '0.1.2.1.0.1.2.1.' },
+    bass: { level: 0.6, pat: 'x..x..x.x..x..x.' },
+    drums: { level: 0.6, kick: 'x.....x.x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.xx' },
+  },
+  // the hill of Legality: dark on purpose
+  sinai: { root: 46, scale: PHR, bpm: 58, chords: [[0, 1, 4], [0, 3, 5]], pad: 0.5, drone: 0.85, cutoff: 380, lead: 0.4, wave: 'sawtooth', density: 0.1 },
+  // chases and arrows: driving, heroic minor
+  danger: {
+    root: 50, scale: MIN, bpm: 138, chords: [[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]],
+    pad: 0.4, padWave: 'strings', drone: 0.2, cutoff: 1200, lead: 0.7, wave: 'sawtooth', bright: 2400, theme: CHASE,
+    arp: { level: 0.3, pat: '0120012001200120' },
+    bass: { level: 0.7, pat: 'x.x.x.x.x.x.x.xo' },
+    drums: { level: 0.75, kick: 'x...x...x...x...', snare: '....x.......x..x', hat: 'xxxxxxxxxxxxxxxx', tom: '............x.x.' },
+  },
+  // the gate and the garden: warm and bright
+  gate: {
+    root: 53, scale: MAJ, bpm: 84, chords: [[0, 2, 4], [5, 7, 9], [3, 5, 7], [4, 6, 8]],
+    pad: 0.8, padWave: 'strings', drone: 0, cutoff: 1300, lead: 0.62, wave: 'triangle', density: 0.28,
+    arp: { level: 0.4, pat: '0.1.2.3.2.1.0.1.' },
+    bass: { level: 0.4, pat: 'x.......x...f...' },
+    drums: { level: 0.3, hat: '..x...x...x...x.' },
+  },
+  // up the walled way: building toward the hill
+  way: {
+    root: 50, scale: MAJ, bpm: 76, chords: [[0, 2, 4], [3, 5, 7], [5, 7, 9], [4, 6, 8]],
+    pad: 0.75, padWave: 'strings', drone: 0.1, cutoff: 1200, lead: 0.45, wave: 'triangle', density: 0.18,
+    arp: { level: 0.3, pat: '0.1.2.1.0.1.2.1.' },
+    bass: { level: 0.45, pat: 'x...x...x...x...' },
+    drums: { level: 0.3, kick: 'x.......x.......' },
+  },
+  hush: { root: 50, scale: MAJ, bpm: 60, chords: [[0, 4, 7]], pad: 0.25, drone: 0.2, cutoff: 600, lead: 0, wave: 'sine' },
+  cross: {
+    root: 50, scale: MAJ, bpm: 66, chords: [[0, 2, 4], [3, 5, 7], [5, 7, 9], [4, 6, 8], [0, 2, 4], [3, 5, 7], [4, 6, 8], [0, 2, 4]],
+    pad: 1.0, padWave: 'strings', drone: 0.3, cutoff: 1500, lead: 0.75, wave: 'triangle', theme: CROSS,
+  },
+  // after the Cross: running, leaping, light
+  free: {
+    root: 57, scale: MAJ, bpm: 112, chords: [[0, 2, 4], [3, 5, 7], [5, 7, 9], [4, 6, 8]],
+    pad: 0.45, padWave: 'strings', drone: 0, cutoff: 1800, lead: 0.7, wave: 'square', bright: 2600, theme: FREE,
+    arp: { level: 0.3, pat: '0.1.2.3.0.1.2.3.' },
+    bass: { level: 0.55, pat: 'x..x..x.x..x..f.' },
+    drums: { level: 0.55, kick: 'x.....x...x.....', snare: '....x.......x...', hat: '..x...x...x...x.' },
+  },
+  // the Accuser: dark on purpose
+  shade: { root: 45, scale: PHR, bpm: 54, chords: [[0, 1, 4]], pad: 0.4, drone: 0.85, cutoff: 330, lead: 0.35, wave: 'sawtooth', density: 0.14 },
 };
 
 const mtof = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
@@ -58,6 +172,8 @@ export class AudioSys {
   private step = 0;
   private nextT = 0;
   private lastDeg = 4;
+  private melIdx = 0;
+  private melRem = 0;
   private ducked = false;
 
   /** Where other sound sources (the recorded voices) should connect. */
@@ -126,6 +242,8 @@ export class AudioSys {
     this.moodName = name;
     this.mood = MOODS[name];
     this.step = 0;
+    this.melIdx = 0;
+    this.melRem = 0;
     this.applyMood();
   }
 
@@ -148,35 +266,110 @@ export class AudioSys {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     const m = this.mood;
-    const stepDur = 60 / m.bpm / 2;
+    const stepDur = 60 / m.bpm / 4;   // sixteenth notes; a bar is 16 steps
     if (this.nextT < ctx.currentTime) this.nextT = ctx.currentTime + 0.05;
     while (this.nextT < ctx.currentTime + 0.25) {
-      const t = this.nextT, st = this.step;
-      if (st % 8 === 0 && m.pad > 0) {
-        const ch = m.chords[Math.floor(st / 8) % m.chords.length];
-        for (const d of ch) this.tone(this.note(d), t, stepDur * 8.6, m.pad * 0.045, 'sine', stepDur * 2.5, this.musicBus, 0.5);
+      const t = this.nextT, st = this.step, s16 = st % 16;
+      const chord = m.chords[Math.floor(st / 16) % m.chords.length];
+      if (s16 === 0 && m.pad > 0) {
+        for (const d of chord) {
+          if (m.padWave === 'strings') this.strings(this.note(d), t, stepDur * 17, m.pad * 0.03);
+          else this.tone(this.note(d), t, stepDur * 17, m.pad * 0.045, 'sine', stepDur * 5, this.musicBus, 0.5);
+        }
       }
-      if (m.melody) {
-        const d = m.melody[st % m.melody.length];
-        if (d >= 0) this.tone(this.note(d, 1), t, stepDur * 3.2, m.pluck * 0.085, m.wave, 0.02, this.musicBus, 0.6);
-      } else if (m.density > 0 && Math.random() < m.density * (st % 2 === 0 ? 1.3 : 0.7)) {
+      if (m.bass) {
+        const c = m.bass.pat[s16];
+        if (c !== '.') {
+          const d = chord[0] + (c === 'f' ? 4 : c === 'o' ? 7 : 0);
+          this.tone(this.note(d, -1), t, stepDur * 2.2, m.bass.level * 0.14, 'triangle', 0.008, this.musicBus, 0.05, 700);
+        }
+      }
+      if (m.arp) {
+        const c = m.arp.pat[s16];
+        if (c !== '.') {
+          const k = +c;
+          const d = k < chord.length ? chord[k] : chord[0] + 7;
+          this.tone(this.note(d, m.arp.oct ?? 1), t, stepDur * 1.8, m.arp.level * 0.06, 'triangle', 0.005, this.musicBus, 0.35);
+        }
+      }
+      if (m.drums) this.drums(m.drums, s16, t);
+      if (m.theme && m.lead > 0) {
+        if (this.melRem <= 0) {
+          const [d, len] = m.theme[this.melIdx++ % m.theme.length];
+          this.melRem = len;
+          if (d >= 0) this.tone(this.note(d), t, Math.max(stepDur * 1.5, stepDur * len * 0.92), m.lead * 0.075, m.wave, 0.015, this.musicBus, 0.45, m.bright);
+        }
+        this.melRem--;
+      } else if (m.density && st % 2 === 0 && Math.random() < m.density * (s16 % 4 === 0 ? 1.6 : 0.8)) {
         const moves = [-2, -1, -1, 1, 1, 2, 3, -3];
         this.lastDeg = Math.max(0, Math.min(11, this.lastDeg + moves[(Math.random() * moves.length) | 0]));
-        this.tone(this.note(this.lastDeg, 1), t, stepDur * 2.6, m.pluck * 0.075, m.wave, 0.012, this.musicBus, 0.55);
+        this.tone(this.note(this.lastDeg, 1), t, stepDur * 5, m.lead * 0.075, m.wave, 0.012, this.musicBus, 0.55, m.bright);
       }
       this.step++;
       this.nextT += stepDur;
     }
   }
 
-  private tone(f: number, t: number, dur: number, vol: number, wave: OscillatorType, attack: number, bus: GainNode, send = 0) {
+  private drums(k: NonNullable<Mood['drums']>, s: number, t: number) {
+    const v = k.level;
+    if (k.kick?.[s] === 'x') this.hit(t, 'kick', v);
+    if (k.snare?.[s] === 'x') this.hit(t, 'snare', v);
+    if (k.hat?.[s] === 'x') this.hit(t, 'hat', v);
+    if (k.tom?.[s] === 'x') this.hit(t, 'tom', v);
+  }
+
+  private hit(t: number, kind: 'kick' | 'snare' | 'hat' | 'tom', v: number) {
+    const ctx = this.ctx!;
+    if (kind === 'kick' || kind === 'tom') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      const [f0, f1, d, vol] = kind === 'kick' ? [130, 42, 0.32, 0.5] : [190, 95, 0.28, 0.32];
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + d * 0.8);
+      g.gain.setValueAtTime(vol * v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g).connect(this.musicBus);
+      o.start(t); o.stop(t + d + 0.02);
+      return;
+    }
+    const src = ctx.createBufferSource(); src.buffer = this.noise;
+    const f = ctx.createBiquadFilter(), g = ctx.createGain();
+    const d = kind === 'snare' ? 0.16 : 0.045;
+    f.type = kind === 'snare' ? 'bandpass' : 'highpass';
+    f.frequency.value = kind === 'snare' ? 1900 : 7500;
+    g.gain.setValueAtTime((kind === 'snare' ? 0.28 : 0.08) * v, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    src.connect(f).connect(g).connect(this.musicBus);
+    if (kind === 'snare') { const s = ctx.createGain(); s.gain.value = 0.25; g.connect(s).connect(this.rev); this.tone(185, t, 0.08, 0.12 * v, 'triangle', 0.002, this.musicBus); }
+    src.start(t, Math.random() * 0.5); src.stop(t + d + 0.02);
+  }
+
+  /** A soft string section: two detuned saws through a low-pass, slow to swell. */
+  private strings(f: number, t: number, dur: number, vol: number) {
+    const ctx = this.ctx!;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + dur * 0.3);
+    g.gain.linearRampToValueAtTime(vol * 0.8, t + dur * 0.8);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    for (const det of [-7, 6]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det;
+      o.connect(lp); o.start(t); o.stop(t + dur + 0.05);
+    }
+    lp.connect(g).connect(this.musicBus);
+    const s = ctx.createGain(); s.gain.value = 0.5; g.connect(s).connect(this.rev);
+  }
+
+  private tone(f: number, t: number, dur: number, vol: number, wave: OscillatorType, attack: number, bus: GainNode, send = 0, bright = 0) {
     const ctx = this.ctx!;
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = wave; o.frequency.value = f;
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(vol, t + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(bus);
+    if (bright > 0) {   // tame buzzy waves into something like a horn
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright; lp.Q.value = 0.7;
+      o.connect(lp).connect(g);
+    } else o.connect(g);
+    g.connect(bus);
     if (send > 0) { const s = ctx.createGain(); s.gain.value = send; g.connect(s).connect(this.rev); }
     o.start(t); o.stop(t + dur + 0.05);
   }

@@ -137,7 +137,7 @@ Everything you see and hear is a stand-in, generated in code. Nothing is license
 | Buildings, trees, rocks | Boxes, pyramids, cones, icosahedra | Modelled kits per region |
 | Shining Ones, Accuser | The same figure, glowing or darkened | Bespoke designs and effects |
 | Sky and weather | A gradient shader, fog, drifting points | Skyboxes, volumetrics, particles |
-| Music | A generative synth score: drone, pad chords, plucked line, one written 8-bar tune at the Cross | A composed, recorded soundtrack |
+| Music | Synthesised in the browser: per place a small band (strings, bass, arpeggio, drums) and a written theme. Adventurous on the road, in the chase and after the Cross; dark only in the Slough, under the hill of Legality and at the Accuser | A composed, recorded soundtrack |
 | Sound effects | Filtered noise and sine thumps | Recorded foley and ambience |
 | Voices | Fish Audio text-to-speech, 22 official designed voices (see `voices.config.json`) | Cast recordings, or a listened-through and re-directed set |
 | Fonts, UI | System serif, CSS panels | Designed typography and interface art |

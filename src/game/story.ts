@@ -549,7 +549,7 @@ export class Story {
     else if (st === Stage.Gate) m = z > 266 && z < 300 ? 'danger' : 'gate';
     else if (g.fire > 0.2) m = 'sinai';
     else if (z > 203) m = 'road';
-    else if (z > 129) m = 'slough';
+    else if (z > 129) m = st >= Stage.Rescue ? 'help' : 'slough';
     else if (z > 48) m = 'plain';
     a.setMood(m);
   }

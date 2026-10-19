@@ -1,4 +1,4 @@
-# The Unburdened Road
+# The Pilgrim's Progress (The Unburdened Road)
 
 A single-player 3D adventure: an original adaptation of John Bunyan's *The Pilgrim's Progress*.
 This is the **first playable build** — a 20–30 minute vertical slice from the City of Destruction

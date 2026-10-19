@@ -1,4 +1,4 @@
-# The Unburdened Road — development notes
+# The Pilgrim's Progress (The Unburdened Road) — development notes
 
 First playable build, 2026-10-08. Recorded voices and touch controls added the same day, followed by
 a pass to make it play more like a game: work for chalk in the City, a chase out of it, a harder

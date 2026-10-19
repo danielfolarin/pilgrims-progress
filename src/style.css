@@ -105,6 +105,7 @@ body { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, s
 .panel { width: min(520px, 92vw); max-height: 92vh; overflow: auto; padding: 26px 30px; }
 .panel.wide { width: min(760px, 94vw); background: var(--panel); border-radius: 8px; border: 1px solid var(--edge); }
 .panel h1 { margin: 0; font-size: 2.5em; font-weight: 400; letter-spacing: 0.04em; line-height: 1.1; }
+.panel h1 small { display: block; margin-top: 6px; font-size: 0.5em; letter-spacing: 0.06em; opacity: 0.85; }
 .panel h2 { margin: 0 0 14px; font-size: 1.4em; font-weight: 400; letter-spacing: 0.06em; }
 .panel .sub { background: none; padding: 0; text-align: left; font-style: italic; opacity: 0.85; margin: 8px 0 22px; animation: none; }
 .panel .body { font-size: 0.86em; line-height: 1.55; margin-bottom: 16px; font-family: system-ui, sans-serif; }

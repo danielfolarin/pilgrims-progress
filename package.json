@@ -18,5 +18,5 @@
     "vite": "^5.4.3"
   },
   "packageManager": "pnpm@11.25.0",
-  "description": "The Unburdened Road: a 3D Pilgrim's Progress adventure (first playable build)"
+  "description": "The Pilgrim's Progress (The Unburdened Road): a 3D adventure from John Bunyan's dream"
 }

@@ -202,7 +202,7 @@ export class Game {
     };
     this.ui.openMenu({
       big: true,
-      title: 'The Unburdened Road',
+      title: "The Pilgrim's Progress<small>(The Unburdened Road)</small>",
       sub: "A pilgrim's journey from the City of Destruction — the first part of a dream",
       items: [
         { label: sv ? `Continue — ${sv.label}` : 'Continue', disabled: !sv, act: () => sv && this.loadState(sv) },
